@@ -54,5 +54,58 @@ islastdigit:
     syscall
 
     blt $t0, 6, printarray
- 
- bubblesort:
+    
+    li $v0, 11
+    	li $a0, '\n'
+   	 syscall
+
+    li $t0, 0 #counter
+    la $t1, ints #integers
+    li $t3, 0 # index being compared
+    
+bubblesort:
+    
+    bubbleloop1:
+    	lbu	$t2, 0($t1) #load no 1 to compare
+        addi $t0, $t0, 1 #i++
+        add $t1, $t1, 4 #shift 4 for each int
+        lbu	$t4, 0($t1) #load number 2 to compare
+    
+        li $v0, 11
+        li $a0, '['
+        syscall
+
+        li $v0, 1
+        move $a0, $t2
+    	syscall
+
+  	  li $v0, 11
+    	li $a0, ','
+    	syscall
+
+   	 li $v0, 11
+    	li $a0, ' '
+  	  syscall
+
+    	li $v0, 1
+    	move $a0, $t4
+    	syscall
+
+    	li $v0, 11
+    	li $a0, ']'
+   	 syscall
+    	
+    	bgt	$t2, $t4, swap
+    	j skipswap
+    	
+    	swap:
+    		sw $t2 0($t1)
+    		sw $t4 -4($t1)
+    	
+    	skipswap:
+        li $v0, 11
+    	li $a0, '\n'
+   	 syscall
+
+   	 blt $t0, 5, bubbleloop1
+    	
