@@ -2,7 +2,7 @@
 ints: .space 24
 prompt: .asciiz "Enter a number: "
 originalarray: .asciiz "Original Array is: "
-res: .asciiz "result: "
+res: .asciiz "Sorted: "
 com_space: .asciiz ", "
 space: .asciiz " "
 
@@ -65,10 +65,31 @@ islastdigit:
     
     
 bubblesort:
-	li $t5, 0 #counter 2
-	 la $t1, ints #integers from the start once more
-	 
 	 #need base case to check if soeted here-
+	 issorted:
+   		 la $t1, ints         # start of array
+    		li $t0, 0            # index counter
+
+	checkloop:
+    		lw $t6, 0($t1)       # load current element
+  		  lw $t7, 4($t1)       # load next element
+
+    		bgt $t6, $t7, outoforder  # if out of order, start sorting
+
+ 		addi $t1, $t1, 4     # move to next pair
+   		addi $t0, $t0, 1
+    		blt $t0, 5, checkloop 
+
+    		# If reached here, it's sorted already
+    		 li $t0, 0 #counter
+   		 la $t1, ints #integers
+    		li $v0, 4
+    		la $a0, res
+    		syscall
+    		j exit
+    	outoforder:
+    		li $t5, 0 #counter 2
+		 la $t1, ints #integers from the start once more
 	
 bubbleloopmain: #will print out all til we reach the index of comparison
    
@@ -144,3 +165,23 @@ bubbleloopmain: #will print out all til we reach the index of comparison
         syscall
    	 j bubblesort
     	
+exit:
+    lbu	$t2, 0($t1) #load
+    addi $t0, $t0, 1 #i++
+    add $t1, $t1, 4 #shift 4 for each int
+    
+    li $v0, 1
+    move $a0, $t2
+    syscall
+    
+    beq $t0, 6, islastdigit2
+    
+    li $v0, 4
+    la $a0, com_space
+    syscall
+islastdigit2:
+    li $v0, 4
+    la $a0, space
+    syscall
+
+    blt $t0, 6, exit
