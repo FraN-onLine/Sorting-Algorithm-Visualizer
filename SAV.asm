@@ -2,10 +2,14 @@
 ints: .space 24
 prompt: .asciiz "Enter a number: "
 originalarray: .asciiz "Original Array is: "
+mergetemp1: .space 12 #left half
+mergetemp2: .space 12 #right half
+mergetemp3: .space 8
+mergetemp4: .space 8
 res: .asciiz "Sorted: "
 com_space: .asciiz ", "
 space: .asciiz " "
-menu: .asciiz "\nChoose Sorting Algorithm:\n1. Bubble Sort\n2. Insertion Sort\nEnter Choice: "
+menu: .asciiz "\nChoose Sorting Algorithm:\n1. Bubble Sort\n2. Insertion Sort 3,Merge Sort\nEnter Choice: "
 
 .text
 .globl main
@@ -73,7 +77,8 @@ islastdigit:
  # Branch to appropriate sorting algorithm based on choice
     li $t0, 1
     beq $s0, $t0, bubble_sort_start  # If choice == 1, go to bubble sort
-    j insertion_sort_start           # Else go to insertion sort
+    beq $s0, 2, insertion_sort_start # 2. ins
+    j merge_sort_start # else merge muna.....
 
 bubble_sort_start:
     li $t0, 0 #counter
@@ -85,6 +90,10 @@ insertion_sort_start:
 	li $t0, 1 #start from 2nd element
 	la $t1, ints
 	j insertionsort
+	
+merge_sort_start:
+	la $t1 ints
+    j mergesort
     
     #====================================================================#
     #================Bubble Sort=========================================#
@@ -333,6 +342,51 @@ finish_sort:
     la $a0, res
     syscall
     j exit
+    
+ # ==================== Merge Sort ========================= #
+mergesort:
+    la $t2, mergetemp1 # xxx | yyy
+    la $t3, mergetemp2 # xxx | yyy
+    la $t4, mergetemp3 # w | xx | yyy
+    la $t5, mergetemp4	 # w | xx | yy | z
+    li $t0, 0 #counter
+ 
+ split1:
+ 
+ 	cutfirsthalf:
+  	 lw $t6, 0($t1) #get from ints
+   	 sw $t6, 0($t2) #store to temp1
+   	addi $t1, $t1, 4
+    	addi $t2, $t2, 4
+    	addi $t0, $t0, 1
+    	blt $t0, 3, cutfirsthalf
+
+    	la $t1, ints
+    	addi $t1, $t1, 12  # Move to index 3
+    	li $t0, 0
+
+cutsecondhalf:
+  	 lw $t6, 0($t1) #get from ints
+   	 sw $t6, 0($t2) #store to temp1
+   	addi $t1, $t1, 4
+    	addi $t2, $t2, 4
+    	addi $t0, $t0, 1
+    	blt $t0, 3, cutsecondhalf
+    	
+#print cut
+    la $t2, mergetemp1 # xxx | yyy
+    la $t3, mergetemp2 # xxx | yyy
+    lw $t6, 0($t2) #get from temp1
+   sw $t6, $s1 #store to save 1
+    lw $t6, 0($t3) #get from temp2
+   sw $t6, $s2 #store to save2 
+
+
+   #break muna
+
+# ================= End of Merge Sort ====================== #
+
+    
 #++++++++++++++++++++Changes
 exit:
 	li $t0, 0 #reset counter
