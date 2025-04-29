@@ -1,11 +1,11 @@
 .data
 ints: .space 24
-prompt: .asciiz "Enter a number: "
-originalarray: .asciiz "Original Array is: "
 mergetemp1: .space 12 #left half
 mergetemp2: .space 12 #right half
 mergetemp3: .space 8
 mergetemp4: .space 8
+prompt: .asciiz "Enter a number: "
+originalarray: .asciiz "Original Array is: "
 res: .asciiz "Sorted: "
 com_space: .asciiz ", "
 space: .asciiz " "
@@ -92,7 +92,7 @@ insertion_sort_start:
 	j insertionsort
 	
 merge_sort_start:
-	la $t1 ints
+	la $t1, ints
     j mergesort
     
     #====================================================================#
@@ -352,10 +352,11 @@ mergesort:
     li $t0, 0 #counter
  
  split1:
+     la $t2, mergetemp1 # xxx | yyy
  
- 	cutfirsthalf:
+ cutfirsthalf:
   	 lw $t6, 0($t1) #get from ints
-   	 sw $t6, 0($t2) #store to temp1
+   	sw $t6, 0($t2) #store to temp6
    	addi $t1, $t1, 4
     	addi $t2, $t2, 4
     	addi $t0, $t0, 1
@@ -367,24 +368,59 @@ mergesort:
 
 cutsecondhalf:
   	 lw $t6, 0($t1) #get from ints
-   	 sw $t6, 0($t2) #store to temp1
+   	 sw $t6, 0($t3) #store to temp6
    	addi $t1, $t1, 4
-    	addi $t2, $t2, 4
+    	addi $t3, $t3, 4
     	addi $t0, $t0, 1
     	blt $t0, 3, cutsecondhalf
     	
 #print cut
+# Print first 3 (mergetemp1)
+    la $t2, mergetemp1
+    li $t0, 0
+printcut1:
+    lw $a0, 0($t2)
+    li $v0, 1
+    syscall
+
+    li $v0, 4
+    la $a0, space
+    syscall
+
+    addi $t2, $t2, 4
+    addi $t0, $t0, 1
+    blt $t0, 3, printcut1
+	
+
+    li $v0, 11
+    li $a0, '|'
+    syscall
+
+    li $t0, 0
+
+printcut2:
+    lw $a0, 0($t2)
+    li $v0, 1
+    syscall
+
+    li $v0, 4
+    la $a0, space
+    syscall
+
+    addi $t2, $t2, 4
+    addi $t0, $t0, 1
+    blt $t0, 3, printcut2
+
+#we cut again from here
     la $t2, mergetemp1 # xxx | yyy
     la $t3, mergetemp2 # xxx | yyy
-    lw $t6, 0($t2) #get from temp1
-   sw $t6, $s1 #store to save 1
-    lw $t6, 0($t3) #get from temp2
-   sw $t6, $s2 #store to save2 
+    lw $s1, 0($t2) #get from temp1
+    lw $s2, 8($t3) #get from temp2
 
 
    #break muna
 
-# ================= End of Merge Sort ====================== #
+
 
     
 #++++++++++++++++++++Changes
