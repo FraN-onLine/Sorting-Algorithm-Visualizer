@@ -9,7 +9,10 @@ originalarray: .asciiz "Original Array is: "
 res: .asciiz "Sorted: "
 com_space: .asciiz ", "
 space: .asciiz " "
-menu: .asciiz "\nChoose Sorting Algorithm:\n1. Bubble Sort\n2. Insertion Sort 3,Merge Sort\nEnter Choice: "
+menu: .asciiz "\nChoose Sorting Algorithm:\n1. Bubble Sort\n2. Insertion Sort \n3,Merge Sort\nEnter Choice: "
+divide: .asciiz "divide: "
+sort: .asciiz "sort: "
+merge: .asciiz "merge: "
 
 .text
 .globl main
@@ -102,7 +105,9 @@ bubblesort:
 	 issorted:
    		 la $t1, ints         # start of array
     		li $t0, 0            # index counter
+    		li $t5, 0 #counter 2 when printing non compared indices
 
+	bne $t3, 0, bubbleloopmain
 	checkloop:
     		lw $t6, 0($t1)       # load current element
   		  lw $t7, 4($t1)       # load next element
@@ -192,7 +197,7 @@ bubbleloopmain: #will print out all til we reach the index of comparison
 	
 	addi $t5, $t5 2 #counter 2 += 2
 	blt  $t5, 6, bubbleloopmain
-	li $t3, 0 #index being compared++
+	li $t3, 0 #index being compared goes back to first if and only if were comparing the last 2 elements
 	 li $v0, 11
         li $a0, '\n'
         syscall
@@ -337,10 +342,7 @@ finish_sort:
     li $v0, 11
     li $a0, '\n'
     syscall
-    
-    li $v0, 4
-    la $a0, res
-    syscall
+   
     j exit
     
  # ==================== Merge Sort ========================= #
@@ -350,13 +352,21 @@ mergesort:
     la $t4, mergetemp3 # w | xx | yyy
     la $t5, mergetemp4	 # w | xx | yy | z
     li $t0, 0 #counter
+    
+    li $v0, 4
+    la $a0, divide
+    syscall
+    
+    li $v0, 11
+    la $a0, '\n'
+    syscall
  
  split1:
      la $t2, mergetemp1 # xxx | yyy
  
  cutfirsthalf:
   	 lw $t6, 0($t1) #get from ints
-   	sw $t6, 0($t2) #store to temp6
+   	sw $t6, 0($t2) #store to mwegwtemp1
    	addi $t1, $t1, 4
     	addi $t2, $t2, 4
     	addi $t0, $t0, 1
@@ -368,7 +378,7 @@ mergesort:
 
 cutsecondhalf:
   	 lw $t6, 0($t1) #get from ints
-   	 sw $t6, 0($t3) #store to temp6
+   	 sw $t6, 0($t3) #store to mergetemp2
    	addi $t1, $t1, 4
     	addi $t3, $t3, 4
     	addi $t0, $t0, 1
@@ -395,6 +405,10 @@ printcut1:
     li $v0, 11
     li $a0, '|'
     syscall
+    
+     li $v0, 11
+    li $a0, ' '
+    syscall
 
     li $t0, 0
 
@@ -410,21 +424,400 @@ printcut2:
     addi $t2, $t2, 4
     addi $t0, $t0, 1
     blt $t0, 3, printcut2
+    
+    li $v0, 11
+    li $a0, '\n'
+    syscall
 
 #we cut again from here
     la $t2, mergetemp1 # xxx | yyy
     la $t3, mergetemp2 # xxx | yyy
-    lw $s1, 0($t2) #get from temp1
-    lw $s2, 8($t3) #get from temp2
+    lw $s1, 0($t2) #split again
+    lw $s2, 8($t3) #split rightmost
 
+#prints and cuts for the second time
+    move $a0, $s1
+    li $v0, 1
+    syscall
+    
+     li $v0, 11
+    li $a0, '|'
+    syscall
+    
+    li $v0, 11
+    li $a0, ' '
+    syscall
+    
+    lw $t6, 4($t2) #get from mergetemp1
+    sw $t6, 0($t4) #store to mergetemp3
+    move $a0, $t6
+    li $v0, 1
+    syscall
+    
+     li $v0, 11
+    li $a0, ' '
+    syscall
+    
+    lw $t6, 8($t2) #get from mergetemp1
+    sw $t6, 4($t4) #store to mergetemp3
+    move $a0, $t6
+    li $v0, 1
+    syscall
+   	
+    li $v0, 11
+    li $a0, '|'
+    syscall
+    
+     li $v0, 11
+    li $a0, ' '
+    syscall
+    
+  #second halffff
+    
+    lw $t6, 0($t3) #get from mergetemp1
+    sw $t6, 0($t5) #store to mergetemp3
+    move $a0, $t6
+    li $v0, 1
+    syscall
+    
+     li $v0, 11
+    li $a0, ' '
+    syscall
+    
+    lw $t6, 4($t3) #get from mergetemp1
+    sw $t6, 4($t5) #store to mergetemp3
+    move $a0, $t6
+    li $v0, 1
+    syscall
+   	
+    li $v0, 11
+    li $a0, ' '
+    syscall
+    
+    li $v0, 11
+    li $a0, '|'
+    syscall
+    
+     li $v0, 11
+    li $a0, ' '
+    syscall
+    
+    move $a0, $s2
+    li $v0, 1
+    syscall
+    
+     li $v0, 11
+    li $a0, '\n'
+    syscall
+    
+ #---------SORT--------------
+    li $v0, 4
+    la $a0, sort
+    syscall
+    
+    li $v0, 11
+    la $a0, '\n'
+    syscall
+    
+ #sort mergetemp3 and 4
+    la $t4, mergetemp3 
+    la $t5, mergetemp4	 
+    
+    # a > b (swap)
+    lw $t6, 0($t4)
+    lw $t7, 4($t4)
+    blt $t6, $t7, skipswap1
+    
+    sw $t6, 4($t4)
+    sw $t7, 0($t4)
+ 
+skipswap1:
+    # a > b (swap)
+    lw $t6, 0($t5)
+    lw $t7, 4($t5)
+    blt $t6, $t7, skipswap2
+    
+    sw $t6, 4($t5)
+    sw $t7, 0($t5)
 
-   #break muna
+skipswap2: #print sorted, starting for isolated value1 -> temp 3 -> temp 4 -> isolated value 2
+     
+     move $a0, $s1
+    li $v0, 1
+    syscall
+    
+     li $v0, 11
+    li $a0, '|'
+    syscall
+    
+    li $v0, 11
+    li $a0, ' '
+    syscall
+    
+    lw $t6, 0($t4) #get from mergetemp3
+    move $a0, $t6
+    li $v0, 1
+    syscall
+    
+     li $v0, 11
+    li $a0, ' '
+    syscall
+    
+    lw $t6, 4($t4) #get from mergetemp3
+    move $a0, $t6
+    li $v0, 1
+    syscall
+   	
+    li $v0, 11
+    li $a0, ' '
+    syscall
+    
+    li $v0, 11
+    li $a0, '|'
+    syscall
+    
+     li $v0, 11
+    li $a0, ' '
+    syscall
+    
+  #second halffff
+    
+    lw $t6, 0($t5) #get from mergetemp4
+    move $a0, $t6
+    li $v0, 1
+    syscall
+    
+     li $v0, 11
+    li $a0, ' '
+    syscall
+    
+    lw $t6, 4($t5) #get from mergetemp4
+    move $a0, $t6
+    li $v0, 1
+    syscall
+   	
+    li $v0, 11
+    li $a0, ' '
+    syscall
+    
+    li $v0, 11
+    li $a0, '|'
+    syscall
+    
+     li $v0, 11
+    li $a0, ' '
+    syscall
+    
+    move $a0, $s2
+    li $v0, 1
+    syscall
+    
+     li $v0, 11
+    li $a0, '\n'
+    syscall
+    
+  #---------Merge--------------
+  
+    li $v0, 4
+    la $a0, merge
+    syscall
+    
+    li $v0, 11
+    la $a0, '\n'
+    syscall
+  
+  #Merge Left
+    lw $t6, 0($t4) #min of temp 3
+    move $t7, $s1 #isolated int 
+    blt $t6, $t7, storeMergedMin1
+    
+#else the isolated is the mnimum, move the merged on the index 2 and 3 
+    sw $t7, 0($t2)
+    sw $t6, 4($t2)
+    lw $t6, 4($t4) #max of temp 3
+     sw $t6, 8($t2)
+    j mergeRight
+    
+ storeMergedMin1:
+    sw $t6, 0($t2)
+    lw $t6, 4($t4) #max of temp 3
+    blt $t6, $t7, storeMergedMax1
+    
+ #else the isolated is the lesser of the two, store the max at the last index
+     sw $t7, 4($t2)
+     sw $t6, 8($t2)
+    j mergeRight
+    
+ storeMergedMax1:
+ #the isolated is the maximum
+     sw $t7, 8($t2)
+     sw $t6, 4($t2)
+  
+ mergeRight:
+  #Merge Right
+    lw $t6, 0($t5) #min of temp 4
+    move $t7, $s2 #isolated int 
+    blt $t6, $t7, storeMergedMin2
+    
+#else the isolated is the mnimum, move the merged on the index 2 and 3 
+    sw $t7, 0($t3)
+    sw $t6, 4($t3)
+    lw $t6, 4($t5) #max of temp 3
+     sw $t6, 8($t3)
+      li $t0, 0
+    j mergePrint1
+    
+ storeMergedMin2:
+    sw $t6, 0($t3)
+    lw $t6, 4($t5) #max of temp 3
+    blt $t6, $t7, storeMergedMax2
+    
+ #else the isolated is the lesser of the two, store the max at the last index
+     sw $t7, 4($t3)
+     sw $t6, 8($t3)
+      li $t0, 0
+    j mergePrint1
+    
+ storeMergedMax2:
+ #the isolated is the maximum
+     sw $t7, 8($t3)
+     sw $t6, 4($t3)
+     
+  li $t0, 0
+     
+ mergePrint1:
+    lw $a0, 0($t2)
+    li $v0, 1
+    syscall
 
+    li $v0, 4
+    la $a0, space
+    syscall
 
+    addi $t2, $t2, 4
+    addi $t0, $t0, 1
+    blt $t0, 3, mergePrint1
+	
 
+    li $v0, 11
+    li $a0, '|'
+    syscall
+    
+     li $v0, 11
+    li $a0, ' '
+    syscall
+
+    li $t0, 0
+
+mergePrint2:
+    lw $a0, 0($t2)
+    li $v0, 1
+    syscall
+
+    li $v0, 4
+    la $a0, space
+    syscall
+
+    addi $t2, $t2, 4
+    addi $t0, $t0, 1
+    blt $t0, 3, mergePrint2
+    
+    li $v0, 11
+    li $a0, '\n'
+    syscall
+  
+#-----Merge Again!!!!!!!!!!!!!!!!!!!!------
+
+    la $t1, ints  #final
+    la $t2, mergetemp1 # xxx
+    la $t3, mergetemp2 # yyy
+    li $t4, 0 #counter of x's merged into final
+    li $t5, 0 #counter of y's merged into final
+     li $t8, 0 # merged counter (total 6)
+     
+finalmergeloop:
+    beq $t8, 6, donefinalmerge   # If 6 elements merged, done
+
+    # Check if left side is exhausted
+    li $t9, 3
+    bge $t4, $t9, useRightOnly
+
+    # Check if right side is exhausted
+    bge $t5, $t9, useLeftOnly
+
+    # Load current elements
+    mul $t9, $t4, 4     # t9 = offset for left
+    add $t9, $t2, $t9
+    lw $t6, 0($t9)      # t6 = current left
+
+    mul $t9, $t5, 4     # t9 = offset for right
+    add $t9, $t3, $t9
+    lw $t7, 0($t9)      # t7 = current right
+
+    # Compare and pick smaller
+    blt $t6, $t7, pickLeft
+
+pickRight:
+    sw $t7, 0($t1)
+    addi $t5, $t5, 1     # right++
+    addi $t1, $t1, 4     # output++
+    addi $t8, $t8, 1     # merged++
+    j finalmergeloop
+
+pickLeft:
+    sw $t6, 0($t1)
+    addi $t4, $t4, 1     # left++
+    addi $t1, $t1, 4     # output++
+    addi $t8, $t8, 1     # merged++
+    j finalmergeloop
+
+useRightOnly:
+    mul $t9, $t5, 4
+    add $t9, $t3, $t9
+    lw $t7, 0($t9)
+    sw $t7, 0($t1)
+    addi $t5, $t5, 1
+    addi $t1, $t1, 4
+    addi $t8, $t8, 1
+    j finalmergeloop
+
+useLeftOnly:
+    mul $t9, $t4, 4
+    add $t9, $t2, $t9
+    lw $t6, 0($t9)
+    sw $t6, 0($t1)
+    addi $t4, $t4, 1
+    addi $t1, $t1, 4
+    addi $t8, $t8, 1
+    j finalmergeloop
+
+donefinalmerge:
+        li $t0, 0
+    la $t1, ints
+printfinal:
+    lw $a0, 0($t1)
+    li $v0, 1
+    syscall
+
+    li $v0, 4
+    la $a0, space
+    syscall
+
+    addi $t1, $t1, 4
+    addi $t0, $t0, 1
+    blt $t0, 6, printfinal
+
+    li $v0, 11
+    li $a0, '\n'
+    syscall
+    j exit
     
 #++++++++++++++++++++Changes
 exit:
+       li $v0, 4
+       la $a0, res
+       syscall
+
 	li $t0, 0 #reset counter
 	la $t1, ints #reset arr pointer
 
