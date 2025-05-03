@@ -9,10 +9,11 @@ originalarray: .asciiz "Original Array is: "
 res: .asciiz "Sorted: "
 com_space: .asciiz ", "
 space: .asciiz " "
-menu: .asciiz "\nChoose Sorting Algorithm:\n1. Bubble Sort\n2. Insertion Sort \n3,Merge Sort\nEnter Choice: "
+menu: .asciiz "\nChoose Sorting Algorithm:\n1. Bubble Sort\n2. Insertion Sort \n3,Merge Sort\n4. Quicksort \nEnter Choice: "
 divide: .asciiz "divide: "
 sort: .asciiz "sort: "
 merge: .asciiz "merge: "
+pivot: .asciiz "pivot: "
 
 .text
 .globl main
@@ -78,10 +79,10 @@ islastdigit:
    	 syscall
 #++++++++++++++++++Changes
  # Branch to appropriate sorting algorithm based on choice
-    li $t0, 1
-    beq $s0, $t0, bubble_sort_start  # If choice == 1, go to bubble sort
+    beq $s0, 1, bubble_sort_start  # If choice == 1, go to bubble sort
     beq $s0, 2, insertion_sort_start # 2. ins
-    j merge_sort_start # else merge muna.....
+    beq $s0, 2, merge_sort_start # 2. ins
+    j quick_sort_start # else merge muna.....
 
 bubble_sort_start:
     li $t0, 0 #counter
@@ -97,6 +98,10 @@ insertion_sort_start:
 merge_sort_start:
 	la $t1, ints
     j mergesort
+    
+quick_sort_start:
+    	la $t1, ints
+    j quicksort
     
     #====================================================================#
     #================Bubble Sort=========================================#
@@ -811,6 +816,25 @@ printfinal:
     li $a0, '\n'
     syscall
     j exit
+    
+#-----------------Quicksort-------------------
+quicksort:
+#step1, get the pivot:
+   lw $s0, 20($t1) #last element of ints, we'll be making good use of offsets for quicksort instead compared to the other previous sorts that makes use of temp memory or using an offset 0 and incrementing 
+    li $v0, 4
+    la $a0, pivot
+    syscall
+
+    li $v0, 1
+   move $a0, $s0
+   syscall
+
+    li $v0, 11
+    la $a0, '\n'
+    syscall
+    
+
+   
     
 #++++++++++++++++++++Changes
 exit:
