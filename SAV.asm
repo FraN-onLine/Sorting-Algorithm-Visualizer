@@ -14,6 +14,12 @@ divide: .asciiz "divide: "
 sort: .asciiz "sort: "
 merge: .asciiz "merge: "
 pivot: .asciiz "pivot: "
+pointers: .asciiz "ptr1 = '>' ptr2 = '<'\n"
+ptr1: .asciiz "> "
+ptr2: .asciiz "< "
+comparing: .asciiz "Comparing Ptr 1 and Pivot: "
+swap: "Swapping Ptr1 and Ptr2\n"
+moveptr2: "Moving Ptr2.."
 
 .text
 .globl main
@@ -81,7 +87,7 @@ islastdigit:
  # Branch to appropriate sorting algorithm based on choice
     beq $s0, 1, bubble_sort_start  # If choice == 1, go to bubble sort
     beq $s0, 2, insertion_sort_start # 2. ins
-    beq $s0, 2, merge_sort_start # 2. ins
+    beq $s0, 3, merge_sort_start # 2. ins
     j quick_sort_start # else merge muna.....
 
 bubble_sort_start:
@@ -833,8 +839,86 @@ quicksort:
     la $a0, '\n'
     syscall
     
-
-   
+    li $t0, 0 #this serves as our counter
+    la $t2, ints #ptr1
+    la $t3 ints #pt2
+    li $t4, -1 #locptr1
+    li $t5, -1 #locptr2
+    
+    li $v0, 4
+    la $a0, pointers
+    syscall
+    
+ #i used zero based indices here btw uwah uwah
+quickloopstart:
+    la $t1, ints
+    addiu $t4, $t4, 1 #moveptr1
+    li $t7, 0 #innercounter
+printloopqck:
+    lw $t6, 0($t1)  #get 
+    bne $t4, $t7, dontPrintPtr1 #how specific does my naming have to be?
+    li $v0, 4
+    la $a0, ptr1
+    syscall
+ 
+dontPrintPtr1:
+    li $v0, 1
+    move $a0, $t6
+    syscall
+    
+    li $v0, 4
+    la $a0, space
+    syscall
+    
+    bne $t5, $t7, dontPrintPtr2 #yesnt
+    li $v0, 4
+    la $a0, ptr2
+    syscall
+    
+dontPrintPtr2:
+    addiu $t7, $t7, 1
+    add $t1, $t1, 4
+    beq $t7, 6, compare
+    j printloopqck
+    
+compare:
+    li $v0, 11
+    la $a0, '\n'
+    syscall
+    
+    la $t1, ints #this is used to reorder base 
+    
+    li $v0, 4
+    la $a0, comparing
+    syscall
+    
+    li $v0, 1
+    lw $t7, 0($t2) #get ptr1
+    move $a0, $t7
+    syscall
+    
+     li $v0, 4
+    la $a0, com_space
+    syscall
+    
+    li $v0, 1
+    move $a0, $s0
+    syscall
+    
+    ble $t7, $s0, moveptr2func
+    
+moveptr2func:
+      addiu $t5 $t5, 1 #moveptr1
+      li $v0, 4
+      la $a0, moveptr1
+     syscall
+     
+     beqz $t5, dontmove
+     add $t3 $t3, 4
+dontmove:
+    #next stepcheck if equal or ahead
+    
+    
     
 #++++++++++++++++++++Changes
 exit:
