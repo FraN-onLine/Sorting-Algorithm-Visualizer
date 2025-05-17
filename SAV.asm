@@ -18,8 +18,10 @@ pointers: .asciiz "ptr1 = '>' ptr2 = '<'\n"
 ptr1: .asciiz "> "
 ptr2: .asciiz "< "
 comparing: .asciiz "Comparing Ptr 1 and Pivot: "
-swap: "Swapping Ptr1 and Ptr2\n"
-moveptr2: "Moving Ptr2.."
+swapmsg: "Swapping Ptr1 and Ptr2\n"
+moveptr1: "Moving Ptr1..\n"
+moveptr2: "Moving Ptr2..\n"
+ptr2is: "Pointer 2 is now: "
 
 .text
 .globl main
@@ -841,7 +843,7 @@ quicksort:
     
     li $t0, 0 #this serves as our counter
     la $t2, ints #ptr1
-    la $t3 ints #pt2
+    la $t3 ints #ptr2
     li $t4, -1 #locptr1
     li $t5, -1 #locptr2
     
@@ -854,6 +856,10 @@ quickloopstart:
     la $t1, ints
     addiu $t4, $t4, 1 #moveptr1
     li $t7, 0 #innercounter
+    li $v0, 4
+    la $a0, moveptr1
+    syscall
+    
 printloopqck:
     lw $t6, 0($t1)  #get 
     bne $t4, $t7, dontPrintPtr1 #how specific does my naming have to be?
@@ -905,19 +911,65 @@ compare:
     move $a0, $s0
     syscall
     
+    li $v0, 11
+    la $a0, '\n'
+    syscall
+    
     ble $t7, $s0, moveptr2func
+    j skipcompare
     
 moveptr2func:
-      addiu $t5 $t5, 1 #moveptr1
+      addiu $t5 $t5, 1 #moveptr2
       li $v0, 4
-      la $a0, moveptr1
+      la $a0, moveptr2
      syscall
      
-     beqz $t5, dontmove
+     jal printforquicksort
+     
+     beqz $t5, dontmove #this just means ptr is now on index 0
      add $t3 $t3, 4
 dontmove:
     #next stepcheck if equal or ahead
+      li $v0, 4
+      la $a0, ptr2is
+     syscall
+     lw $t7 0($t3) #get ptr2
+     
+    li $v0, 1
+    move $a0, $t7
+    syscall
     
+    li $v0, 11
+    la $a0, '\n'
+    syscall
+    beq $t4, $t5, skipcompare #if they point at the same position, skip else swap
+    lw $t8 0($t2) #gets ptr1
+    
+    li $v0, 4
+    la $a0, swapmsg
+    syscall
+    
+    #calculate position of ptr1 and 2
+    la $t1, ints
+    move $t9, $t4 #gets location of ptr1
+    mul $t9, $t9, 4
+    add $t1, $t1, $t9 #get offset on ints
+    sw $t7 0($t1)
+    la $t1, ints #this is used to reorder base 
+    move $t9, $t5 #gets location of ptr1
+    mul $t9, $t9, 4
+    add $t1, $t1, $t9 #get offset on ints
+    sw $t8 0($t1)
+    
+    jal printforquicksort
+    
+skipcompare:
+    add $t0, $t0, 1
+    add $t2 $t2, 4
+    li $v0, 11
+    la $a0, '\n'
+    syscall
+    bne $t0, 6, quickloopstart
     
     
 #++++++++++++++++++++Changes
@@ -951,3 +1003,44 @@ islastdigit2:
     syscall
 
     blt $t0, 6, exit
+    j endprogram
+
+printforquicksort:
+ #i used zero based indices here btw uwah uwah
+    la $t1, ints
+    li $t7, 0 #innercounter
+printloopqck2:
+    lw $t6, 0($t1)  #get 
+    bne $t4, $t7, dontPrintPtr12 #how specific does my naming have to be?
+    li $v0, 4
+    la $a0, ptr1
+    syscall
+ 
+dontPrintPtr12:
+    li $v0, 1
+    move $a0, $t6
+    syscall
+    
+    li $v0, 4
+    la $a0, space
+    syscall
+    
+    bne $t5, $t7, dontPrintPtr22#yesnt
+    li $v0, 4
+    la $a0, ptr2
+    syscall
+    
+dontPrintPtr22:
+    addiu $t7, $t7, 1
+    add $t1, $t1, 4
+    bne $t7, 6, printloopqck2
+    
+    li $v0, 11
+    la $a0, '\n'
+    syscall
+    
+    jr $ra
+    
+endprogram:
+    li $v0, 10
+    syscall
