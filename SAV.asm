@@ -13,7 +13,7 @@ menu: .asciiz "\nChoose Sorting Algorithm:\n1. Bubble Sort\n2. Insertion Sort \n
 divide: .asciiz "divide: "
 sort: .asciiz "sort: "
 merge: .asciiz "merge: "
-pivot: .asciiz "pivot: "
+pivot: .asciiz "Pivot: "
 pointers: .asciiz "ptr1 = '>' ptr2 = '<'\n"
 ptr1: .asciiz "> "
 ptr2: .asciiz "< "
@@ -116,8 +116,8 @@ quick_sort_start:
 bubblesort:
 	 #need base case to check if soeted here-
 	 issorted:
-   		 la $t1, ints         # start of array
-    		li $t0, 0            # index counter
+   		 la $t1, ints # start of array
+    		li $t0, 0  # index counter
     		li $t5, 0 #counter 2 when printing non compared indices
 
 	bne $t3, 0, bubbleloopmain
@@ -971,6 +971,167 @@ skipcompare:
     syscall
     bne $t0, 6, quickloopstart
     
+#by this point ORIGINAL PIVOT IS LOCKED IN PLACE
+#and is now at the position of pointer 2
+
+jal checksorted #if its sorted, exit
+
+move $s0, $t5 #location of locked pointer 2
+#we'll start on the left side if it is not sorted
+
+ble  $s0, 1, quicksortRIGHTSIDE #if its the first or second element, immediately do right side
+#sort using quicksort 0 to n-1, where n is index of new pivot
+
+   add $s7, $s0, 1
+   la $t1, ints
+   move $t0, $s0
+   subi $t0, $t0, 1
+   mul $t0, $t0, 4
+   add $t1, $t1, $t0
+   #our pivot is now on $s1
+   lw $s1, 0($t1) #last element of ints, we'll be making good use of offsets for quicksort instead compared to the other previous sorts that makes use of temp memory or using an offset 0 and incrementing 
+    li $v0, 4
+    la $a0, pivot
+    syscall
+
+    li $v0, 1
+   move $a0, $s1
+   syscall
+
+    li $v0, 11
+    la $a0, '\n'
+    syscall
+    
+    li $t0, 0 #this serves as our counter
+    la $t1, ints
+    la $t2, ints #ptr1
+    la $t3 ints #ptr2
+    li $t4, -1 #locptr1
+    li $t5, -1 #locptr2
+
+    #i used zero based indices here btw uwah uwah
+quickloopstartl:
+    la $t1, ints
+    addiu $t4, $t4, 1 #moveptr1
+    li $t7, 0 #innercounter
+    li $v0, 4
+    la $a0, moveptr1
+    syscall
+    
+printloopqckl:
+    lw $t6, 0($t1)  #get 
+    bne $t4, $t7, dontPrintPtr1l #how specific does my naming have to be?
+    li $v0, 4
+    la $a0, ptr1
+    syscall
+ 
+dontPrintPtr1l:
+    li $v0, 1
+    move $a0, $t6
+    syscall
+    
+    li $v0, 4
+    la $a0, space
+    syscall
+    
+    bne $t5, $t7, dontPrintPtr2l #yesnt
+    li $v0, 4
+    la $a0, ptr2
+    syscall
+    
+dontPrintPtr2l:
+    addiu $t7, $t7, 1
+    add $t1, $t1, 4
+    beq $t7, 6, comparel
+    j printloopqck
+    
+comparel:
+    li $v0, 11
+    la $a0, '\n'
+    syscall
+    
+    la $t1, ints #this is used to reorder base 
+    
+    li $v0, 4
+    la $a0, comparing
+    syscall
+    
+    li $v0, 1
+    lw $t7, 0($t2) #get ptr1
+    move $a0, $t7
+    syscall
+    
+     li $v0, 4
+    la $a0, com_space
+    syscall
+    
+    li $v0, 1
+    move $a0, $s1
+    syscall
+    
+    li $v0, 11
+    la $a0, '\n'
+    syscall
+    
+    ble $t7, $s1, moveptr2funcl
+    j skipcomparel
+    
+moveptr2funcl:
+      addiu $t5 $t5, 1 #moveptr2
+      li $v0, 4
+      la $a0, moveptr2
+     syscall
+     
+     jal printforquicksort
+     
+     beqz $t5, dontmovel #this just means ptr is now on index 0
+     add $t3 $t3, 4
+dontmovel:
+    #next stepcheck if equal or ahead
+      li $v0, 4
+      la $a0, ptr2is
+     syscall
+     lw $t7 0($t3) #get ptr2
+     
+    li $v0, 1
+    move $a0, $t7
+    syscall
+    
+    li $v0, 11
+    la $a0, '\n'
+    syscall
+    beq $t4, $t5, skipcomparel #if they point at the same position, skip else swap
+    lw $t8 0($t2) #gets ptr1
+    
+    li $v0, 4
+    la $a0, swapmsg
+    syscall
+    
+    #calculate position of ptr1 and 2
+    la $t1, ints
+    move $t9, $t4 #gets location of ptr1
+    mul $t9, $t9, 4
+    add $t1, $t1, $t9 #get offset on ints
+    sw $t7 0($t1)
+    la $t1, ints #this is used to reorder base 
+    move $t9, $t5 #gets location of ptr1
+    mul $t9, $t9, 4
+    add $t1, $t1, $t9 #get offset on ints
+    sw $t8 0($t1)
+    
+    jal printforquicksort
+    
+skipcomparel:
+    add $t0, $t0, 1
+    add $t2 $t2, 4
+    li $v0, 11
+    la $a0, '\n'
+    syscall
+    bne $t0, $s7, quickloopstartl
+    
+
+
+quicksortRIGHTSIDE:
     
 #++++++++++++++++++++Changes
 exit:
@@ -1040,6 +1201,28 @@ dontPrintPtr22:
     syscall
     
     jr $ra
+    
+checksorted:
+   		 la $t1, ints         # start of array
+	checkloop2:
+    		lw $t6, 0($t1)       # load current element
+  		  lw $t7, 4($t1)       # load next element
+
+    		bgt $t6, $t7, outoforder2  # if out of order, start sorting
+
+ 		addi $t1, $t1, 4     # move to next pair
+   		addi $t0, $t0, 1
+    		blt $t0, 5, checkloop2
+
+    		# If reached here, it's sorted already
+    		 li $t0, 0 #counter
+   		 la $t1, ints #integers
+    		li $v0, 4
+    		la $a0, res
+    		syscall
+    		j exit
+    	outoforder2:
+    		jr $ra
     
 endprogram:
     li $v0, 10
