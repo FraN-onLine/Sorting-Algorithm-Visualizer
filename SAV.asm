@@ -18,10 +18,12 @@ pointers: .asciiz "ptr1 = '>' ptr2 = '<'\n"
 ptr1: .asciiz "> "
 ptr2: .asciiz "< "
 comparing: .asciiz "Comparing Ptr 1 and Pivot: "
-swapmsg: "Swapping Ptr1 and Ptr2\n"
-moveptr1: "Moving Ptr1..\n"
-moveptr2: "Moving Ptr2..\n"
-ptr2is: "Pointer 2 is now: "
+swapmsg: .asciiz "Swapping Ptr1 and Ptr2\n"
+moveptr1: .asciiz "Moving Ptr1..\n"
+moveptr2: .asciiz "Moving Ptr2..\n"
+ptr2is: .asciiz "Pointer 2 is now: "
+startit: .asciiz "\n-------Start of New Iteration-------\n"
+
 
 .text
 .globl main
@@ -851,6 +853,10 @@ quicksort:
     la $a0, pointers
     syscall
     
+    li $v0, 4
+    la $a0, startit
+    syscall
+    
  #i used zero based indices here btw uwah uwah
 quickloopstart:
     la $t1, ints
@@ -982,7 +988,11 @@ move $s0, $t5 #location of locked pointer 2
 ble  $s0, 1, quicksortRIGHTSIDE #if its the first or second element, immediately do right side
 #sort using quicksort 0 to n-1, where n is index of new pivot
 
-   add $s7, $s0, 1
+    li $v0, 4
+    la $a0, startit
+    syscall
+
+   move $s7, $s0
    la $t1, ints
    move $t0, $s0
    subi $t0, $t0, 1
@@ -1043,7 +1053,7 @@ dontPrintPtr2l:
     addiu $t7, $t7, 1
     add $t1, $t1, 4
     beq $t7, 6, comparel
-    j printloopqck
+    j printloopqckl
     
 comparel:
     li $v0, 11
@@ -1132,6 +1142,10 @@ skipcomparel:
 
 
 quicksortRIGHTSIDE:
+   
+    li $v0, 4
+    la $a0, startit
+    syscall
     
 #++++++++++++++++++++Changes
 exit:
@@ -1203,10 +1217,11 @@ dontPrintPtr22:
     jr $ra
     
 checksorted:
+                li $t0, 0
    		 la $t1, ints         # start of array
 	checkloop2:
     		lw $t6, 0($t1)       # load current element
-  		  lw $t7, 4($t1)       # load next element
+  		lw $t7, 4($t1)       # load next element
 
     		bgt $t6, $t7, outoforder2  # if out of order, start sorting
 
