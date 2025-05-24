@@ -985,6 +985,19 @@ jal checksorted #if its sorted, exit
 move $s0, $t5 #location of locked pointer 2
 #we'll start on the left side if it is not sorted
 
+move $s2, $s0 #location of the previous pivot
+move $s7, $s0 #this is where it will end, originally by pivot's location
+
+# TAKE NOTE
+# s0 - is now the location of the first FIXED pivot, from here we sort it's left first
+# s1 - is the value of current pivot
+# s2- is the location of previous pivot
+# s3- the location of the previous->previous pivot
+# s4 - value of the pivot (referring to lr)
+# s7 - is where the loop ends
+
+quicksortLEFTSIDE:
+
 ble  $s0, 1, quicksortRIGHTSIDE #if its the first or second element, immediately do right side
 #sort using quicksort 0 to n-1, where n is index of new pivot
 
@@ -992,7 +1005,6 @@ ble  $s0, 1, quicksortRIGHTSIDE #if its the first or second element, immediately
     la $a0, startit
     syscall
 
-   move $s7, $s0
    la $t1, ints
    move $t0, $s0
    subi $t0, $t0, 1
@@ -1138,7 +1150,180 @@ skipcomparel:
     la $a0, '\n'
     syscall
     bne $t0, $s7, quickloopstartl
+
+move $s3, $s2 #previous pivot is now previous-previous
+move $s2, $t5 #location of locked pointer 2, store at s2
+sub $s4, $s3, $s2 #the difference of pivot 1  and pivot 2
+blt $s4, 2, skipsortingtherightpartwhilesortingtheleftpart
+
+sortLeftsRight:
+#--sort right part of the left part
+    li $v0, 4
+    la $a0, startit
+    syscall
     
+   move $s7, $s3
+
+   la $t1, ints
+   move $t0, $s3
+   subi $t0, $t0, 1
+   mul $t0, $t0, 4
+   add $t1, $t1, $t0
+   #our pivot is now on $s1
+   lw $s4, 0($t1) #last element of ints, we'll be making good use of offsets for quicksort instead compared to the other previous sorts that makes use of temp memory or using an offset 0 and incrementing 
+    li $v0, 4
+    la $a0, pivot
+    syscall
+
+    li $v0, 1
+   move $a0, $s4
+   syscall
+
+    li $v0, 11
+    la $a0, '\n'
+    syscall
+    
+    la $t2, ints #ptr1
+    la $t3 ints #ptr2
+    move $t0, $s2
+    add $t0, $t0, 1
+    mul $t0, $t0, 4
+    add $t2, $t2, $t0
+    move $t0, $s2 #this serves as our counter
+    add $t0, $t0, 1
+    la $t1, ints
+    move $t4, $s2 #locptr1 from s2
+    move $t5, $s2 #locptr2 from s2
+
+    #i used zero based indices here btw uwah uwah
+quickloopstartlr:
+    la $t1, ints
+    addiu $t4, $t4, 1 #moveptr1
+    li $t7, 0 #innercounter
+    li $v0, 4
+    la $a0, moveptr1
+    syscall
+    
+printloopqcklr:
+    lw $t6, 0($t1)  #get 
+    bne $t4, $t7, dontPrintPtr1lr #how specific does my naming have to be?
+    li $v0, 4
+    la $a0, ptr1
+    syscall
+ 
+dontPrintPtr1lr:
+    li $v0, 1
+    move $a0, $t6
+    syscall
+    
+    li $v0, 4
+    la $a0, space
+    syscall
+    
+    bne $t5, $t7, dontPrintPtr2lr #yesnt
+    li $v0, 4
+    la $a0, ptr2
+    syscall
+    
+dontPrintPtr2lr:
+    addiu $t7, $t7, 1
+    add $t1, $t1, 4
+    beq $t7, 6, comparelr
+    j printloopqcklr
+    
+comparelr:
+    li $v0, 11
+    la $a0, '\n'
+    syscall
+    
+    la $t1, ints #this is used to reorder base 
+    
+    li $v0, 4
+    la $a0, comparing
+    syscall
+    
+    li $v0, 1
+    lw $t7, 0($t2) #get ptr1
+    move $a0, $t7
+    syscall
+    
+     li $v0, 4
+    la $a0, com_space
+    syscall
+    
+    li $v0, 1
+    move $a0, $s4
+    syscall
+    
+    li $v0, 11
+    la $a0, '\n'
+    syscall
+    
+    ble $t7, $s4, moveptr2funclr
+    j skipcomparelr
+    
+moveptr2funclr:
+      addiu $t5 $t5, 1 #moveptr2
+      li $v0, 4
+      la $a0, moveptr2
+     syscall
+     
+     jal printforquicksort
+     
+     beqz $t5, dontmovelr #this just means ptr is now on index 0
+     add $t3 $t3, 4
+dontmovelr:
+    #next stepcheck if equal or ahead
+      li $v0, 4
+      la $a0, ptr2is
+     syscall
+     lw $t7 0($t3) #get ptr2
+     
+    li $v0, 1
+    move $a0, $t7
+    syscall
+    
+    li $v0, 11
+    la $a0, '\n'
+    syscall
+    beq $t4, $t5, skipcomparelr #if they point at the same position, skip else swap
+    lw $t8 0($t2) #gets ptr1
+    
+    li $v0, 4
+    la $a0, swapmsg
+    syscall
+    
+    #calculate position of ptr1 and 2
+    la $t1, ints
+    move $t9, $t4 #gets location of ptr1
+    mul $t9, $t9, 4
+    add $t1, $t1, $t9 #get offset on ints
+    sw $t7 0($t1)
+    la $t1, ints #this is used to reorder base 
+    move $t9, $t5 #gets location of ptr1
+    mul $t9, $t9, 4
+    add $t1, $t1, $t9 #get offset on ints
+    sw $t8 0($t1)
+    
+    jal printforquicksort
+
+skipcomparelr:
+    add $t0, $t0, 1
+    add $t2 $t2, 4
+    li $v0, 11
+    la $a0, '\n'
+    syscall
+    bne $t0, $s7, quickloopstartlr
+    
+    move $s2, $t5 #location of the new lower point, while there's still a gap continue 
+    sub $s4, $s3, $s2 #the difference of pivot 1  and pivot 2
+    bge $s4, 2, sortLeftsRight
+
+skipsortingtherightpartwhilesortingtheleftpart:
+move $s7, $s2
+ble  $s2, 1, quicksortRIGHTSIDE
+j quicksortLEFTSIDE
+
 
 
 quicksortRIGHTSIDE:
