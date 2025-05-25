@@ -980,8 +980,6 @@ skipcompare:
 #by this point ORIGINAL PIVOT IS LOCKED IN PLACE
 #and is now at the position of pointer 2
 
-jal checksorted #if its sorted, exit
-
 move $s0, $t5 #location of locked pointer 2
 #we'll start on the left side if it is not sorted
 
@@ -998,6 +996,8 @@ move $s7, $s0 #this is where it will end, originally by pivot's location
 
 quicksortLEFTSIDE:
 
+jal checksorted #if its sorted, exit
+
 ble  $s0, 1, quicksortRIGHTSIDE #if its the first or second element, immediately do right side
 #sort using quicksort 0 to n-1, where n is index of new pivot
 
@@ -1006,7 +1006,7 @@ ble  $s0, 1, quicksortRIGHTSIDE #if its the first or second element, immediately
     syscall
 
    la $t1, ints
-   move $t0, $s0
+   move $t0, $s2
    subi $t0, $t0, 1
    mul $t0, $t0, 4
    add $t1, $t1, $t0
@@ -1183,12 +1183,19 @@ sortLeftsRight:
     la $a0, '\n'
     syscall
     
-    la $t2, ints #ptr1
-    la $t3 ints #ptr2
+    # ptr1 starts at first element of subarray (s2+1)
+    la $t2, ints
     move $t0, $s2
-    add $t0, $t0, 1
+    addiu $t0, $t0, 1
     mul $t0, $t0, 4
     add $t2, $t2, $t0
+
+# ptr2 starts at previous pivot (s2)
+    la $t3, ints
+    move $t0, $s2
+    mul $t0, $t0, 4
+    add $t3, $t3, $t0
+    
     move $t0, $s2 #this serves as our counter
     add $t0, $t0, 1
     la $t1, ints
@@ -1417,8 +1424,6 @@ checksorted:
     		# If reached here, it's sorted already
     		 li $t0, 0 #counter
    		 la $t1, ints #integers
-    		li $v0, 4
-    		la $a0, res
     		syscall
     		j exit
     	outoforder2:
