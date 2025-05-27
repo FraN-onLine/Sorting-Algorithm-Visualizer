@@ -4,6 +4,7 @@ mergetemp1: .space 12 #left half
 mergetemp2: .space 12 #right half
 mergetemp3: .space 8
 mergetemp4: .space 8
+initMessage: .asciiz "-----Sorting Algorithm Visualizer-----\nPlease Enter 6 Digits to Start Visualization\n"
 prompt: .asciiz "Enter a number: "
 originalarray: .asciiz "Original Array is: "
 res: .asciiz "Sorted: "
@@ -36,6 +37,10 @@ heapify_msg: .asciiz "Heapifying: "
 main:
     li $t0, 0 #counter
     la $t1, ints #integers
+    
+    li $v0, 4
+    la $a0, initMessage
+    syscall
 
 loop:
     li $v0, 4
@@ -133,6 +138,7 @@ random_sort_start:
     
     #====================================================================#
     #================Bubble Sort=========================================#
+    
 bubblesort:
 	 #need base case to check if soeted here-
 	 issorted:
@@ -158,6 +164,7 @@ bubblesort:
     		la $a0, res
     		syscall
     		j exit
+    		
     	outoforder:
     		li $t5, 0 #counter 2
 		 la $t1, ints #integers from the start once more
@@ -474,6 +481,10 @@ printcut2:
     syscall
     
      li $v0, 11
+    li $a0, ' '
+    syscall
+    
+     li $v0, 11
     li $a0, '|'
     syscall
     
@@ -577,6 +588,10 @@ skipswap2: #print sorted, starting for isolated value1 -> temp 3 -> temp 4 -> is
      
      move $a0, $s1
     li $v0, 1
+    syscall
+    
+     li $v0, 11
+    li $a0, ' '
     syscall
     
      li $v0, 11
@@ -1348,15 +1363,23 @@ skipcomparelr:
 
 skipsortingtherightpartwhilesortingtheleftpart:
 move $s7, $s2
-ble  $s2, 1, quicksortRIGHTSIDE
+ble  $s2, 1, quicksortRIGHTSIDEsetup
 j quicksortLEFTSIDE
+
+# TAKE NOTE
+# s0 - is the location of the first FIXED pivot initially, and will be replaced by the lower bounds accordingly
+# s1 - is the value of current pivot
+# s2- is the location of previous pivot
+# s3- the location of the previous->previous pivot
+# s4 - value of the pivot (referring to lr)
+# s7 - is where the loop ends (right bound)
+
+quicksortRIGHTSIDEsetup:
+  li $s7, 5
 
 quicksortRIGHTSIDE:
 
-    # If right partition is size 1 or less, done
-    move $t8, $s7         # $s7 = right bound
-    sub $t8, $t8, $s0     # $s0 = left bound (pivot just fixed)
-    ble $t8, 1, exit
+    jal checksorted #if its sorted, exit
 
     li $v0, 4
     la $a0, startit
@@ -1371,9 +1394,11 @@ quicksortRIGHTSIDE:
     li $v0, 4
     la $a0, pivot
     syscall
+    
     li $v0, 1
     move $a0, $s1
     syscall
+    
     li $v0, 11
     la $a0, '\n'
     syscall
@@ -1416,13 +1441,16 @@ dontPrintPtr1r:
     li $v0, 1
     move $a0, $t6
     syscall
+    
     li $v0, 4
     la $a0, space
     syscall
+    
     bne $t5, $t7, dontPrintPtr2r
     li $v0, 4
     la $a0, ptr2
     syscall
+    
 dontPrintPtr2r:
     addiu $t7, $t7, 1
     add $t1, $t1, 4
@@ -1440,15 +1468,19 @@ comparer:
     li $v0, 4
     la $a0, comparing
     syscall
+    
     li $v0, 1
     move $a0, $t8
     syscall
+    
     li $v0, 4
     la $a0, com_space
     syscall
+    
     li $v0, 1
     move $a0, $s1
     syscall
+    
     li $v0, 11
     la $a0, '\n'
     syscall
@@ -1461,35 +1493,46 @@ moveptr2funcr:
     li $v0, 4
     la $a0, moveptr2
     syscall
+    
     jal printforquicksort
     beqz $t5, dontmover
-    add $t3, $t3, 4
+    add $t3, $t3, 4 #moves ptr2's location
+    
 dontmover:
+
     li $v0, 4
     la $a0, ptr2is
     syscall
-    lw $t9, 0($t3)
+    
+    lw $t7, 0($t3) #get's Ptr 2's value
     li $v0, 1
-    move $a0, $t9
+    move $a0, $t7
     syscall
+    
     li $v0, 11
     la $a0, '\n'
     syscall
-    beq $t4, $t5, skipcomparer
+    
+    beq $t4, $t5, skipcomparer #if they are at the same position don't compare
+    
     lw $t8, 0($t2) # gets ptr1
     li $v0, 4
     la $a0, swapmsg
     syscall
+    
+    #calculate position of ptr1 and 2
     la $t1, ints
     move $t9, $t4 #gets location of ptr1
     mul $t9, $t9, 4
     add $t1, $t1, $t9 #get offset on ints
-    sw $t9, 0($t1)
-    la $t1, ints
-    move $t9, $t5 #gets location of ptr2
+    sw $t7 0($t1)
+    
+    la $t1, ints #this is used to reorder base 
+    move $t9, $t5 #gets location of ptr1
     mul $t9, $t9, 4
-    add $t1, $t1, $t9
-    sw $t8, 0($t1)
+    add $t1, $t1, $t9 #get offset on ints
+    sw $t8 0($t1)
+
     jal printforquicksort
 
 skipcomparer:
@@ -1498,15 +1541,40 @@ skipcomparer:
     li $v0, 11
     la $a0, '\n'
     syscall
-    bne $t0, $s7, quickloopstartr
+    bne $t4, $s7, quickloopstartr
 
-    # After partition, update pivots and check for right's right
-    move $s3, $s7         # previous right bound
+    # After partition, update pivots and check 
+    #at first iteration pivot will always be 5, from here we will continue to loop
+    beq $s0, 0, checkdoubleSort
+ checkConditions:
+    sub $t8, $t5, $s0 #gap between prev pivot and new pivot, if branch is equal or lesser than 2, the numbers between them are sorted such that t5 is our new lower bound
+    ble $t8, 2, gapSortedLoopRight
+    #else update t5 to be the temporary upper bound
     move $s7, $t5         # new pivot index (locked pointer 2)
-    sub $t8, $s3, $s7     # gap between previous right bound and new pivot
-    bge $t8, 2, quicksortRIGHTSIDE
+    sub $s7, $s7, 1
+    jal quicksortRIGHTSIDE
+    gapSortedLoopRight:
+    move $s0, $t5 #new lower bound
+    j quicksortRIGHTSIDE
 
-    j exit
+#now we need to handle when pivot ends up at 4th position (index 3, while lower bound is index 0)!!! the only case where we handle both right's right and right's left at the same time
+#the plan of action is to always check what the lower bound is if 0 lead to this
+checkdoubleSort:
+    beq $s4, 1, rightsRight
+    bne $t5, 3, checkConditions
+    bne $s7, 5, checkConditions
+    li $s4, 1 #this marks that we attempted to sort right's left first
+    #we start with sorting right's left by setting our new pivot to index 2
+    li $s7, 2
+    j quicksortRIGHTSIDE
+    
+rightsRight:
+   #we do right's right which sorts 4 and 5th indices
+   li $s0, 4
+    li $s7, 5
+    j quicksortRIGHTSIDE
+    
+     
 
     
     #================Heap Sort=========================================#
