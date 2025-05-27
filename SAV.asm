@@ -9,7 +9,7 @@ originalarray: .asciiz "Original Array is: "
 res: .asciiz "Sorted: "
 com_space: .asciiz ", "
 space: .asciiz " "
-menu: .asciiz "\nChoose Sorting Algorithm:\n1. Bubble Sort\n2. Insertion Sort \n3,Merge Sort\n4. Quicksort \nEnter Choice: "
+menu: .asciiz "\nChoose Sorting Algorithm:\n1. Bubble Sort\n2. Insertion Sort \n3,Merge Sort\n4. Quicksort\n5. Heap Sort\n6. Random Sort \nEnter Choice: "
 divide: .asciiz "divide: "
 sort: .asciiz "sort: "
 merge: .asciiz "merge: "
@@ -23,6 +23,11 @@ moveptr1: .asciiz "Moving Ptr1..\n"
 moveptr2: .asciiz "Moving Ptr2..\n"
 ptr2is: .asciiz "Pointer 2 is now: "
 startit: .asciiz "\n-------Start of New Iteration-------\n"
+#heap
+heap_building: .asciiz "\nBuilding max heap: "
+heap_extract: .asciiz "\nExtracting max: "
+swap_root: .asciiz "Swap root with last leaf: "
+heapify_msg: .asciiz "Heapifying: "
 
 
 .text
@@ -92,7 +97,10 @@ islastdigit:
     beq $s0, 1, bubble_sort_start  # If choice == 1, go to bubble sort
     beq $s0, 2, insertion_sort_start # 2. ins
     beq $s0, 3, merge_sort_start # 2. ins
-    j quick_sort_start # else merge muna.....
+    beq $s0, 4, quick_sort_start # else merge muna.....
+    beq $s0, 5, heap_sort_start
+    beq $s0, 6, random_sort_start
+    j exit
 
 bubble_sort_start:
     li $t0, 0 #counter
@@ -112,6 +120,16 @@ merge_sort_start:
 quick_sort_start:
     	la $t1, ints
     j quicksort
+    
+heap_sort_start:
+    li $t0, 0        
+    la $t1, ints     
+    j heapsort
+    
+random_sort_start:
+    li $t0, 0        # Initialize counter
+    la $t1, ints     # Load array base
+    j randomsort
     
     #====================================================================#
     #================Bubble Sort=========================================#
@@ -984,6 +1002,8 @@ move $s0, $t5 #location of locked pointer 2
 #we'll start on the left side if it is not sorted
 
 move $s2, $s0 #location of the previous pivot
+li $s7, 5
+ble  $s0, 1, quicksortRIGHTSIDE 
 move $s7, $s0 #this is where it will end, originally by pivot's location
 
 # TAKE NOTE
@@ -1331,14 +1351,553 @@ move $s7, $s2
 ble  $s2, 1, quicksortRIGHTSIDE
 j quicksortLEFTSIDE
 
-
-
 quicksortRIGHTSIDE:
-   
+
+    # If right partition is size 1 or less, done
+    move $t8, $s7         # $s7 = right bound
+    sub $t8, $t8, $s0     # $s0 = left bound (pivot just fixed)
+    ble $t8, 1, exit
+
     li $v0, 4
     la $a0, startit
     syscall
+
+    la $t1, ints
+    move $t0, $s7
+    mul $t0, $t0, 4
+    add $t1, $t1, $t0
+    lw $s1, 0($t1)         # $s1 = pivot value
+
+    li $v0, 4
+    la $a0, pivot
+    syscall
+    li $v0, 1
+    move $a0, $s1
+    syscall
+    li $v0, 11
+    la $a0, '\n'
+    syscall
+
+    li $t0, 0 # counter for loop
+    la $t2, ints # ptr1
+    la $t3, ints # ptr2
+    move $t4, $s0 # locptr1 = left bound (pivot just fixed)
+    move $t5, $s0 # locptr2 = left bound (pivot just fixed)
+
+    # ptr1 starts at $s0+1
+    la $t2, ints
+    move $t6, $s0
+    addiu $t6, $t6, 1
+    mul $t6, $t6, 4
+    add $t2, $t2, $t6
+
+    # ptr2 starts at $s0
+    la $t3, ints
+    move $t6, $s0
+    mul $t6, $t6, 4
+    add $t3, $t3, $t6
+
+    # Loop from $s0+1 to $s7 (inclusive)
+quickloopstartr:
+    la $t1, ints
+    addiu $t4, $t4, 1 #moveptr1
+    li $t7, 0 #innercounter
+    li $v0, 4
+    la $a0, moveptr1
+    syscall
+
+printloopqckr:
+    lw $t6, 0($t1)
+    bne $t4, $t7, dontPrintPtr1r
+    li $v0, 4
+    la $a0, ptr1
+    syscall
+dontPrintPtr1r:
+    li $v0, 1
+    move $a0, $t6
+    syscall
+    li $v0, 4
+    la $a0, space
+    syscall
+    bne $t5, $t7, dontPrintPtr2r
+    li $v0, 4
+    la $a0, ptr2
+    syscall
+dontPrintPtr2r:
+    addiu $t7, $t7, 1
+    add $t1, $t1, 4
+    beq $t7, 6, comparer
+    j printloopqckr
+
+comparer:
+    li $v0, 11
+    la $a0, '\n'
+    syscall
+
+    la $t1, ints
+    lw $t8, 0($t2) # get ptr1 value
+
+    li $v0, 4
+    la $a0, comparing
+    syscall
+    li $v0, 1
+    move $a0, $t8
+    syscall
+    li $v0, 4
+    la $a0, com_space
+    syscall
+    li $v0, 1
+    move $a0, $s1
+    syscall
+    li $v0, 11
+    la $a0, '\n'
+    syscall
+
+    ble $t8, $s1, moveptr2funcr
+    j skipcomparer
+
+moveptr2funcr:
+    addiu $t5, $t5, 1 #moveptr2
+    li $v0, 4
+    la $a0, moveptr2
+    syscall
+    jal printforquicksort
+    beqz $t5, dontmover
+    add $t3, $t3, 4
+dontmover:
+    li $v0, 4
+    la $a0, ptr2is
+    syscall
+    lw $t9, 0($t3)
+    li $v0, 1
+    move $a0, $t9
+    syscall
+    li $v0, 11
+    la $a0, '\n'
+    syscall
+    beq $t4, $t5, skipcomparer
+    lw $t8, 0($t2) # gets ptr1
+    li $v0, 4
+    la $a0, swapmsg
+    syscall
+    la $t1, ints
+    move $t9, $t4 #gets location of ptr1
+    mul $t9, $t9, 4
+    add $t1, $t1, $t9 #get offset on ints
+    sw $t9, 0($t1)
+    la $t1, ints
+    move $t9, $t5 #gets location of ptr2
+    mul $t9, $t9, 4
+    add $t1, $t1, $t9
+    sw $t8, 0($t1)
+    jal printforquicksort
+
+skipcomparer:
+    add $t0, $t0, 1
+    add $t2, $t2, 4
+    li $v0, 11
+    la $a0, '\n'
+    syscall
+    bne $t0, $s7, quickloopstartr
+
+    # After partition, update pivots and check for right's right
+    move $s3, $s7         # previous right bound
+    move $s7, $t5         # new pivot index (locked pointer 2)
+    sub $t8, $s3, $s7     # gap between previous right bound and new pivot
+    bge $t8, 2, quicksortRIGHTSIDE
+
+    j exit
+
     
+    #================Heap Sort=========================================#
+heapsort:
+ # First build max heap
+    li $v0, 4
+    la $a0, heap_building
+    syscall
+    li $v0, 11
+    li $a0, '\n'
+    syscall
+    
+    # Start from last parent node ((n/2)-1 where n=6)
+    li $t0, 2        
+    li $s0, 6        # Store initial heap size
+    
+build_heap:
+     # Process all nodes from last parent to root
+    move $a0, $t0    # Current parent index
+    move $a1, $s0    # Heap size
+    jal heapify      # Use heapify down for building
+    jal print_heap   
+    
+    subi $t0, $t0, 1  # Move to next parent
+    bge $t0, 0, build_heap
+    
+    # After build_heap, start extraction phase
+    move $t0, $s0    # Initialize counter with heap size
+    j extract_loop   # Start extracting max elements
+    
+heapify_up_loop:
+    # Calculate parent index ((i-1)/2)
+    addi $t3, $t2, -1
+    srl $t3, $t3, 1     # Parent index
+    
+    # Get values
+    la $t1, ints
+    mul $t4, $t2, 4     # Current offset
+    add $t4, $t1, $t4
+    lw $t5, 0($t4)      # Current value
+    
+    mul $t6, $t3, 4     # Parent offset
+    add $t6, $t1, $t6
+    lw $t7, 0($t6)      # Parent value
+    
+    # Compare with parent
+    bge $t7, $t5, heapify_up_done  # Parent larger, we're done
+    
+    # Swap with parent
+    sw $t5, 0($t6)      # Move current up
+    sw $t7, 0($t4)      # Move parent down
+
+    move $t2, $t3       # Move to parent position
+    bgtz $t2, heapify_up_loop  # Continue if not at root
+    
+heapify_up_done:
+    lw $ra, 0($sp)
+    addi $sp, $sp, 4
+    jr $ra
+    
+extract_loop:
+    beqz $t0, heap_sort_done    # Changed from beqz $t0, 0
+    
+    # Print extraction step
+    li $v0, 4
+    la $a0, heap_extract
+    syscall
+    
+    la $t1, ints
+    lw $t2, 0($t1)        # Load root
+    
+    li $v0, 1
+    move $a0, $t2
+    syscall
+    li $v0, 11
+    li $a0, '\n'
+    syscall
+    
+    # Print swap message
+    li $v0, 4
+    la $a0, swap_root
+    syscall
+    
+    # Swap root with last element
+    la $t1, ints
+    subi $t3, $t0, 1      # Fix: Use size-1 for last element index
+    mul $t3, $t3, 4       
+    add $t3, $t1, $t3     
+    lw $t4, 0($t3)        
+    
+    sw $t4, 0($t1)        # Put last element at root
+    sw $t2, 0($t3)        # Put old root at end
+    
+    # Heapify with reduced size
+    subi $t0, $t0, 1      # Reduce heap size
+    move $a1, $t0         # Pass new size to heapify
+    move $a0, $zero       # Start heapify from root
+    jal heapify
+    jal print_heap
+    
+    j extract_loop
+
+print_heap:
+    # Save registers
+    addi $sp, $sp, -12
+    sw $t0, 0($sp)
+    sw $t1, 4($sp)
+    sw $t2, 8($sp)
+    
+    li $t0, 0        
+    la $t1, ints     
+    
+    # Print heap array
+print_heap_loop:
+    beq $t0, 6, print_heap_structure
+    
+    lw $t2, 0($t1)   
+    
+    li $v0, 1
+    move $a0, $t2
+    syscall
+    
+    li $v0, 4
+    la $a0, space
+    syscall
+    
+    addi $t1, $t1, 4
+    addi $t0, $t0, 1
+    j print_heap_loop
+    
+print_heap_structure:
+    # Print heap structure visualization
+    li $v0, 11
+    li $a0, '\n'
+    syscall
+    
+    # Print root level (index 0)
+    la $t1, ints
+    lw $t2, 0($t1)
+    li $v0, 1
+    move $a0, $t2
+    syscall
+    li $v0, 11
+    li $a0, '\n'
+    syscall
+    
+    # Print level 1 (indices 1-2)
+    lw $t2, 4($t1)
+    li $v0, 1
+    move $a0, $t2
+    syscall
+    li $v0, 4
+    la $a0, space
+    syscall
+    lw $t2, 8($t1)
+    li $v0, 1
+    move $a0, $t2
+    syscall
+    li $v0, 11
+    li $a0, '\n'
+    syscall
+    
+    # Print level 2 (indices 3-5)
+    lw $t2, 12($t1)
+    li $v0, 1
+    move $a0, $t2
+    syscall
+    li $v0, 4
+    la $a0, space
+    syscall
+    lw $t2, 16($t1)
+    li $v0, 1
+    move $a0, $t2
+    syscall
+    li $v0, 4
+    la $a0, space
+    syscall
+    lw $t2, 20($t1)
+    li $v0, 1
+    move $a0, $t2
+    syscall
+    
+    li $v0, 11
+    li $a0, '\n'
+    syscall
+    li $v0, 11
+    li $a0, '\n'
+    syscall
+    
+    # Restore registers
+    lw $t0, 0($sp)
+    lw $t1, 4($sp)
+    lw $t2, 8($sp)
+    addi $sp, $sp, 12
+    jr $ra
+
+heapify:
+    # a0 = index to heapify from
+    # a1 = heap size
+    
+    # Save return address
+    addi $sp, $sp, -4
+    sw $ra, 0($sp)
+    
+    move $t2, $a0        # Index
+    move $s7, $a1        # Heap size
+    
+    # Calculate child indices
+    mul $t5, $t2, 2      # Left child = 2i + 1
+    addi $t5, $t5, 1
+    mul $t6, $t2, 2      # Right child = 2i + 2
+    addi $t6, $t6, 2
+    
+    # Find largest
+    move $t7, $t2        # Assume root is largest
+    
+    la $t1, ints
+    mul $t3, $t2, 4
+    add $t3, $t1, $t3
+    lw $t4, 0($t3)       # Root value
+    
+    # Check if left child is larger
+    bge $t5, $s7, check_right    # Skip if beyond heap size
+    mul $t8, $t5, 4
+    add $t8, $t1, $t8
+    lw $t9, 0($t8)                # Left child value
+    ble $t9, $t4, check_right     # Skip if left <= root
+    move $t7, $t5                 # Left is largest
+    move $t4, $t9                 # Update largest value
+    
+check_right:
+    bge $t6, $s7, do_swap        # Skip if beyond heap size
+    mul $t8, $t6, 4
+    add $t8, $t1, $t8
+    lw $t9, 0($t8)               # Right child value
+    ble $t9, $t4, do_swap        # Skip if right <= largest
+    move $t7, $t6                # Right is largest
+    
+do_swap:
+    beq $t7, $t2, heapify_done   # If root is largest, done
+    
+    # Swap with largest child
+    mul $t8, $t7, 4
+    add $t8, $t1, $t8
+    lw $t9, 0($t8)               # Load largest child
+    mul $t3, $t2, 4
+    add $t3, $t1, $t3
+    lw $t4, 0($t3)               # Load current
+    sw $t9, 0($t3)               # Swap values
+    sw $t4, 0($t8)
+    
+    # Recursively heapify the affected subtree
+    move $a0, $t7                # New root index
+    move $a1, $s7                # Keep heap size
+    jal heapify
+    
+heapify_done:
+    lw $ra, 0($sp)
+    addi $sp, $sp, 4
+    jr $ra
+
+heap_sort_done:
+    j exit
+
+#================Random Sort=========================================#
+randomsort:
+    # Save return address and used registers
+    addi $sp, $sp, -16
+    sw $ra, 0($sp)
+    sw $s0, 4($sp)
+    sw $s1, 8($sp)
+    sw $s2, 12($sp)
+    
+    # First check if array is sorted
+    jal check_if_sorted
+    beq $v0, 1, random_sort_done   # If sorted, cleanup and exit
+    
+    # If not sorted, shuffle array
+    li $t0, 0        # Reset counter
+    la $t1, ints     # Reset array pointer
+    
+shuffle_loop:
+    # Generate random index (0-5)
+    li $a1, 6        # Upper bound (exclusive)
+    li $v0, 42       # Random int syscall
+    syscall          # Result in $a0
+    
+    # Calculate addresses and swap
+    mul $t2, $t0, 4
+    add $t2, $t1, $t2
+    mul $t4, $a0, 4
+    add $t4, $t1, $t4
+    
+    # Load values
+    lw $t3, 0($t2)   # Load first number
+    lw $t5, 0($t4)   # Load second number
+    
+    # Swap numbers
+    sw $t5, 0($t2)
+    sw $t3, 0($t4)
+    
+    # Print current state
+    jal print_current_state
+    
+    addi $t0, $t0, 1
+    blt $t0, 6, shuffle_loop
+    
+    # Try again if not sorted
+    j randomsort
+
+random_sort_done:
+    # Restore saved registers
+    lw $ra, 0($sp)
+    lw $s0, 4($sp)
+    lw $s1, 8($sp)
+    lw $s2, 12($sp)
+    addi $sp, $sp, 16
+    j exit
+
+check_if_sorted:
+    # Save return address
+    addi $sp, $sp, -4
+    sw $ra, 0($sp)
+    
+    la $t6, ints     # Load array base
+    li $t7, 0        # Counter
+    li $v0, 1        # Assume sorted
+
+check_loop:
+    lw $t8, 0($t6)   # Current number
+    lw $t9, 4($t6)   # Next number
+    
+    bge $t8, $t9, not_sorted  # If current >= next, not sorted
+    
+    addi $t6, $t6, 4  # Move to next pair
+    addi $t7, $t7, 1
+    blt $t7, 5, check_loop
+    
+    # Restore and return
+    lw $ra, 0($sp)
+    addi $sp, $sp, 4
+    jr $ra
+
+not_sorted:
+    li $v0, 0        # Mark as not sorted
+    # Restore and return
+    lw $ra, 0($sp)
+    addi $sp, $sp, 4
+    jr $ra
+
+print_current_state:
+    # Save return address and used registers
+    addi $sp, $sp, -16
+    sw $ra, 0($sp)
+    sw $s0, 4($sp)
+    sw $s1, 8($sp)
+    sw $s2, 12($sp)
+    
+    la $t6, ints
+    li $t7, 0
+    
+print_loop:
+    beq $t7, 6, print_done
+    
+    lw $t8, 0($t6)
+    
+    li $v0, 1
+    move $a0, $t8
+    syscall
+    
+    li $v0, 4
+    la $a0, space
+    syscall
+    
+    addi $t6, $t6, 4
+    addi $t7, $t7, 1
+    j print_loop
+    
+print_done:
+    li $v0, 11
+    li $a0, '\n'
+    syscall
+    
+    # Restore registers
+    lw $ra, 0($sp)
+    lw $s0, 4($sp)
+    lw $s1, 8($sp)
+    lw $s2, 12($sp)
+    addi $sp, $sp, 16
+    jr $ra
+
 #++++++++++++++++++++Changes
 exit:
        li $v0, 4
