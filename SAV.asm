@@ -10,7 +10,7 @@ originalarray: .asciiz "Original Array is: "
 res: .asciiz "Sorted: "
 com_space: .asciiz ", "
 space: .asciiz " "
-menu: .asciiz "\nChoose Sorting Algorithm:\n1. Bubble Sort\n2. Insertion Sort \n3,Merge Sort\n4. Quicksort\n5. Heap Sort\n6. Random Sort \nEnter Choice: "
+menu: .asciiz "\nChoose Sorting Algorithm:\n1. Bubble Sort\n2. Insertion Sort \n3. Merge Sort\n4. Quicksort\n5. Heap Sort\n6. Random Sort \n7. Radix Sort\nEnter Choice: "
 divide: .asciiz "divide: "
 sort: .asciiz "sort: "
 merge: .asciiz "merge: "
@@ -29,12 +29,32 @@ heap_building: .asciiz "\nBuilding max heap: "
 heap_extract: .asciiz "\nExtracting max: "
 swap_root: .asciiz "Swap root with last leaf: "
 heapify_msg: .asciiz "Heapifying: "
-
+#random
+steps_msg: .asciiz "\nNumber of steps taken to sort: "
+#radix
+radix_msg: .asciiz "\nProcessing digit position: "
+bucket_msg: .asciiz "\nCurrent buckets:\n"
+bucket0: .asciiz "Bucket 0: "
+bucket1: .asciiz "Bucket 1: "
+bucket2: .asciiz "Bucket 2: "
+bucket3: .asciiz "Bucket 3: "
+bucket4: .asciiz "Bucket 4: "
+bucket5: .asciiz "Bucket 5: "
+bucket6: .asciiz "Bucket 6: "
+bucket7: .asciiz "Bucket 7: "
+bucket8: .asciiz "Bucket 8: "
+bucket9: .asciiz "Bucket 9: "
+after_pass: .asciiz "\nAfter this pass: "
+.align 2
+buckets: .space 400  # Space for 10 buckets (10 * 10 words)
+count: .space 40     # Count array (10 words)
+nonePicked: .asciiz "No Sorting Algorithm Picked, Terminating Program....."
 
 .text
 .globl main
 
 main:
+
     li $t0, 0 #counter
     la $t1, ints #integers
     
@@ -43,6 +63,7 @@ main:
     syscall
 
 loop:
+
     li $v0, 4
     la $a0, prompt
     syscall
@@ -56,7 +77,6 @@ loop:
     add $t1, $t1, 4 #shift 4 for each int
     blt $t0, 6, loop
     
-    #++++++++++++++++++++++++++CHANGES
     #Print menu for algorithm selection
     li $v0, 4
     la $a0, menu
@@ -74,6 +94,7 @@ loop:
     syscall
     
 printarray:
+
     lbu	$t2, 0($t1) #load
     addi $t0, $t0, 1 #i++
     add $t1, $t1, 4 #shift 4 for each int
@@ -87,7 +108,9 @@ printarray:
     li $v0, 4
     la $a0, com_space
     syscall
+    
 islastdigit:
+
     li $v0, 4
     la $a0, space
     syscall
@@ -97,14 +120,20 @@ islastdigit:
     li $v0, 11
     	li $a0, '\n'
    	 syscall
-#++++++++++++++++++Changes
+
  # Branch to appropriate sorting algorithm based on choice
     beq $s0, 1, bubble_sort_start  # If choice == 1, go to bubble sort
-    beq $s0, 2, insertion_sort_start # 2. ins
-    beq $s0, 3, merge_sort_start # 2. ins
-    beq $s0, 4, quick_sort_start # else merge muna.....
+    beq $s0, 2, insertion_sort_start 
+    beq $s0, 3, merge_sort_start 
+    beq $s0, 4, quick_sort_start 
     beq $s0, 5, heap_sort_start
     beq $s0, 6, random_sort_start
+    beq $s0, 7, radix_sort_start 
+    
+    li $v0, 4
+    la $a0, nonePicked
+    syscall
+    
     j exit
 
 bubble_sort_start:
@@ -135,7 +164,17 @@ random_sort_start:
     li $t0, 0        # Initialize counter
     la $t1, ints     # Load array base
     j randomsort
+
+radix_sort_start:
+    # Initialize
+    la $t1, ints
+    li $s0, 1        # Current digit position (1, 10, 100)
+    li $s1, 0        # Max number of digits needed
     
+    # Find maximum number to determine number of digits
+    li $t0, 0        # Counter
+    li $t2, 0        # Max number
+    j find_max
     #====================================================================#
     #================Bubble Sort=========================================#
     
@@ -843,6 +882,7 @@ donefinalmerge:
         li $t0, 0
     la $t1, ints
 printfinal:
+#after merge
     lw $a0, 0($t1)
     li $v0, 1
     syscall
@@ -891,6 +931,11 @@ quicksort:
     syscall
     
  #i used zero based indices here btw uwah uwah
+ 
+ # TAKE NOTE
+# s0 - is the VALUE of the first pivot, afterwards it will be overriden by it's FIXED location
+# upper bound and lower bound in this iteration will be indices 0 and 5
+
 quickloopstart:
     la $t1, ints
     addiu $t4, $t4, 1 #moveptr1
@@ -1574,10 +1619,7 @@ rightsRight:
     li $s7, 5
     j quicksortRIGHTSIDE
     
-     
-
-    
-    #================Heap Sort=========================================#
+#================Heap Sort=========================================#
 heapsort:
  # First build max heap
     li $v0, 4
@@ -1842,19 +1884,24 @@ heap_sort_done:
 #================Random Sort=========================================#
 randomsort:
     # Save return address and used registers
-    addi $sp, $sp, -16
+    addi $sp, $sp, -20
     sw $ra, 0($sp)
     sw $s0, 4($sp)
     sw $s1, 8($sp)
     sw $s2, 12($sp)
+    sw $s3, 16($sp)      # Save shuffle counter
     
-    # First check if array is sorted
-    jal check_if_sorted
-    beq $v0, 1, random_sort_done   # If sorted, cleanup and exit
+    li $s3, 0            # Initialize step counter
+    li $t0, 0            # Initialize array index
+    la $t1, ints         # Reset array pointer
+
+    # # First check if array is sorted
+    # jal check_if_sorted
+    # beq $v0, 1, random_sort_done   # If sorted, cleanup and exit
     
-    # If not sorted, shuffle array
-    li $t0, 0        # Reset counter
-    la $t1, ints     # Reset array pointer
+    # # If not sorted, shuffle array
+    # li $t0, 0        # Reset counter
+    # la $t1, ints     # Reset array pointer
     
 shuffle_loop:
     # Generate random index (0-5)
@@ -1876,22 +1923,44 @@ shuffle_loop:
     sw $t5, 0($t2)
     sw $t3, 0($t4)
     
+    addi $s3, $s3, 1    # Increment step counter
+
     # Print current state
     jal print_current_state
+
+    # Check if sorted
+    jal check_if_sorted
+    beq $v0, 1, random_sort_done
     
+    # Reset array index if we reached the end
     addi $t0, $t0, 1
     blt $t0, 6, shuffle_loop
+    li $t0, 0            # Reset only when we've gone through whole array
     
     # Try again if not sorted
-    j randomsort
+    j shuffle_loop
 
 random_sort_done:
+    # Print number of steps taken
+    li $v0, 4
+    la $a0, steps_msg
+    syscall
+    
+    li $v0, 1
+    move $a0, $s3      # Print total steps counter
+    syscall
+    
+    li $v0, 11
+    li $a0, '\n'
+    syscall
+
     # Restore saved registers
     lw $ra, 0($sp)
     lw $s0, 4($sp)
     lw $s1, 8($sp)
     lw $s2, 12($sp)
-    addi $sp, $sp, 16
+    lw $s3, 16($sp)    # Don't forget to restore step counter
+    addi $sp, $sp, 20  # Adjust stack pointer (changed from 16 to 20)
     j exit
 
 check_if_sorted:
@@ -1966,7 +2035,306 @@ print_done:
     addi $sp, $sp, 16
     jr $ra
 
-#++++++++++++++++++++Changes
+#=================Radix Sort=========================================#
+find_max:
+    # Find maximum number to determine number of digits
+    la $t1, ints
+    li $t2, 0    # Max number
+    li $t0, 0    # Counter
+
+max_loop:
+    lw $t3, 0($t1)
+    bgt $t3, $t2, update_max
+    j continue_max
+
+update_max:
+    move $t2, $t3
+
+continue_max:
+    addi $t1, $t1, 4
+    addi $t0, $t0, 1
+    blt $t0, 6, max_loop
+
+    # Calculate number of digits in max number
+    move $t3, $t2
+    li $s1, 0    # Digit counter
+count_digits:
+    beqz $t3, start_radix
+    div $t3, $t3, 10
+    addi $s1, $s1, 1
+    j count_digits
+
+start_radix:
+    li $s0, 1    # Current digit position (1, 10, 100)
+
+radix_loop:
+    # If we've completed s1 passes, we are done with Radix Sort
+    beqz $s1, done_radix
+
+    # Print current digit position
+    li $v0, 4
+    la $a0, radix_msg
+    syscall
+    
+    li $v0, 1
+    move $a0, $s0
+    syscall
+    
+    li $v0, 11
+    li $a0, '\n'
+    syscall
+
+    # Print bucket header
+    li $v0, 4
+    la $a0, bucket_msg
+    syscall
+
+    # Clear count array (count[i]=0 for i=0..9)
+    la   $t9, count
+    li   $t8, 0
+    
+    # # Initialize buckets and count array with proper alignment
+    # la $t1, buckets          # Load base address of buckets
+    # li $t2, 0                # Initialize counter
+    # li $t3, 400             # Total bytes to clear
+    
+    # # # Ensure word alignment for bucket array
+    # # li $t4, 3                # Alignment mask
+    # # not $t4, $t4            # Invert mask
+    # # and $t1, $t1, $t4       # Align address to word boundary
+
+clear_count_loop:
+    sw   $zero, 0($t9)    # count[i] = 0
+    addi $t9, $t9, 4
+    addi $t8, $t8, 1
+    blt  $t8, 10, clear_count_loop
+
+    # Clear buckets memory
+    la   $t9, buckets
+    li   $t8, 0
+
+clear_buckets_loop:
+    sw   $zero, 0($t9)
+    addi $t9, $t9, 4
+    addi $t8, $t8, 1
+    blt  $t8, 60, clear_buckets_loop
+
+    # Distribute elements into buckets
+    la   $t1, ints
+    li   $t0, 0          # loop counter for 6 elements
+
+distribute_loop:
+    lw   $t2, 0($t1)     # Load current element
+    
+    # Calculate digit = (element / s0) % 10
+    div  $t5, $t2, $s0   # t5 = element / digitPos
+    mflo $t5
+    li   $t6, 10
+    div  $t5, $t5, $t6   # get remainder
+    mfhi $t3             # bucketIndex in t3
+
+    # Get count for that bucket
+    la   $t7, count
+    sll  $t8, $t3, 2     # 4*bucketIndex
+    add  $t7, $t7, $t8
+    lw   $t9, 0($t7)     # count[bucketIndex]
+
+    # Store element in correct bucket position
+    la   $t4, buckets
+    li   $s2, 24         # 24 bytes per bucket (6 items * 4 bytes)
+    mul  $t8, $t3, $s2   # offset for bucket
+    add  $t4, $t4, $t8
+    
+    # Offset inside bucket
+    mul  $t8, $t9, 4     # 4 bytes per element
+    add  $t4, $t4, $t8
+    
+    sw   $t2, 0($t4)     # store element
+    
+    # Increment count[bucketIndex]
+    addi $t9, $t9, 1
+    sw   $t9, 0($t7)
+
+    # Next element
+    addi $t1, $t1, 4
+    addi $t0, $t0, 1
+    blt  $t0, 6, distribute_loop
+
+    # Print bucket contents
+    li   $v0, 4
+    la   $a0, bucket_msg
+    syscall
+
+    # Print each bucket (0..9)
+    li   $t3, 0         # bucket index
+
+print_buckets_loop:
+    bge  $t3, 10, skip_bucket_print
+
+    # Select correct bucket label
+    la   $s2, bucket0
+    move $t4, $t3
+    beq  $t4, 0, print_bkt0
+    beq  $t4, 1, print_bkt1
+    beq  $t4, 2, print_bkt2
+    beq  $t4, 3, print_bkt3
+    beq  $t4, 4, print_bkt4
+    beq  $t4, 5, print_bkt5
+    beq  $t4, 6, print_bkt6
+    beq  $t4, 7, print_bkt7
+    beq  $t4, 8, print_bkt8
+    beq  $t4, 9, print_bkt9
+    j    got_label
+
+print_bkt0: la $s2, bucket0
+    j got_label
+print_bkt1: la $s2, bucket1
+    j got_label
+print_bkt2: la $s2, bucket2
+    j got_label
+print_bkt3: la $s2, bucket3
+    j got_label
+print_bkt4: la $s2, bucket4
+    j got_label
+print_bkt5: la $s2, bucket5
+    j got_label
+print_bkt6: la $s2, bucket6
+    j got_label
+print_bkt7: la $s2, bucket7
+    j got_label
+print_bkt8: la $s2, bucket8
+    j got_label
+print_bkt9: la $s2, bucket9
+
+got_label:
+    # Print bucket label
+    li   $v0, 4
+    move $a0, $s2
+    syscall
+
+    # Get number of items in this bucket
+    la   $t6, count
+    sll  $t7, $t3, 2
+    add  $t6, $t6, $t7
+    lw   $t9, 0($t6)    # numberOfItems
+
+    # Print items in bucket
+    la   $t6, buckets
+    li   $s2, 24
+    mul  $t7, $t3, $s2
+    add  $t6, $t6, $t7  # start of bucket
+    li   $t4, 0         # index in bucket
+
+print_each_item:
+    beq  $t4, $t9, end_bucket
+    
+    lw   $t5, 0($t6)
+    # Print number
+    li   $v0, 1
+    move $a0, $t5
+    syscall
+
+    # Print space
+    li   $v0, 4
+    la   $a0, space
+    syscall
+
+    addi $t4, $t4, 1
+    addi $t6, $t6, 4
+    j    print_each_item
+
+end_bucket:
+    # Print newline
+    li   $v0, 11
+    li   $a0, '\n'
+    syscall
+
+    addi $t3, $t3, 1
+    j    print_buckets_loop
+
+skip_bucket_print:
+    # Collect numbers back into array
+    la   $t1, ints      # destination array
+    li   $t2, 0         # bucket index
+    li   $t0, 0         # total items counter
+
+collect_numbers_loop:
+    bge  $t2, 10, collect_done
+    
+    # Get count[t2]
+    la   $t3, count
+    sll  $t4, $t2, 2
+    add  $t3, $t3, $t4
+    lw   $t5, 0($t3)    # items in bucket t2
+
+    beq  $t5, $zero, next_bucket
+
+    # Get bucket address
+    la   $t6, buckets
+    li   $s2, 24
+    mul  $t4, $t2, $s2
+    add  $t6, $t6, $t4
+
+    # Copy items from bucket
+    li   $t4, 0
+
+copy_bucket_items:
+    beq  $t4, $t5, finish_this_bucket
+    lw   $t7, 0($t6)
+    sw   $t7, 0($t1)
+    addi $t6, $t6, 4
+    addi $t1, $t1, 4
+    addi $t4, $t4, 1
+    addi $t0, $t0, 1
+    j    copy_bucket_items
+
+finish_this_bucket:
+next_bucket:
+    addi $t2, $t2, 1
+    j    collect_numbers_loop
+
+collect_done:
+    # Print array after this pass
+    li   $v0, 4
+    la   $a0, after_pass
+    syscall
+
+    # Print current array state
+    li   $t0, 0
+    la   $t1, ints
+
+print_pass_array:
+    beq  $t0, 6, pass_array_newline
+    lw   $t2, 0($t1)
+    
+    li   $v0, 1
+    move $a0, $t2
+    syscall
+
+    li   $v0, 4
+    la   $a0, com_space
+    syscall
+
+    addi $t1, $t1, 4
+    addi $t0, $t0, 1
+    j    print_pass_array
+
+pass_array_newline:
+    li   $v0, 11
+    li   $a0, '\n'
+    syscall
+
+    # Prepare for next pass
+    li   $t2, 10
+    mul  $s0, $s0, $t2
+    addi $s1, $s1, -1
+    j    radix_loop
+
+done_radix:
+    j exit
+    
+#--- Exit Area for All Sorts---
+#Final Printing
 exit:
        li $v0, 4
        la $a0, res
@@ -2003,6 +2371,7 @@ printforquicksort:
  #i used zero based indices here btw uwah uwah
     la $t1, ints
     li $t7, 0 #innercounter
+    
 printloopqck2:
     lw $t6, 0($t1)  #get 
     bne $t4, $t7, dontPrintPtr12 #how specific does my naming have to be?
