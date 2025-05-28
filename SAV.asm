@@ -1976,7 +1976,7 @@ check_loop:
     lw $t8, 0($t6)   # Current number
     lw $t9, 4($t6)   # Next number
     
-    bge $t8, $t9, not_sorted  # If current >= next, not sorted
+    bgt $t8, $t9, not_sorted  # If current > next, not sorted
     
     addi $t6, $t6, 4  # Move to next pair
     addi $t7, $t7, 1
