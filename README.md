@@ -1,7 +1,7 @@
 # Sorting-Algorithm-Visualizer in Assembly Language (MIPS32 Architecture)
-What's Better than Assembly?  
-Algorithms!  
-This 2,500 Lines of Assembly Code Helps Visualize 6 Popular Sorting Algorithms and Random Sort  
+📍 What's Better than Assembly?  
+🎮 Algorithms!  
+This 2,500 Lines of Assembly Code Helps Visualize 6 Popular Sorting Algorithms and Random Sort 🧩
 If You Ever want to dig in into how they works maybe this is the program for you (or something)  
 
 # Bubble Sort- Chan!
