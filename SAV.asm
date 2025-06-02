@@ -1,5 +1,5 @@
 .data
-ints: .space 24
+ints: .space 24 #this is for the 6 numbers 4*6  = 24
 mergetemp1: .space 12 #left half
 mergetemp2: .space 12 #right half
 mergetemp3: .space 8
@@ -175,6 +175,7 @@ radix_sort_start:
     li $t0, 0        # Counter
     li $t2, 0        # Max number
     j find_max
+    
     #====================================================================#
     #================Bubble Sort=========================================#
     
@@ -467,6 +468,7 @@ cutsecondhalf:
 # Print first 3 (mergetemp1)
     la $t2, mergetemp1
     li $t0, 0
+    
 printcut1:
     lw $a0, 0($t2)
     li $v0, 1
@@ -480,7 +482,6 @@ printcut1:
     addi $t0, $t0, 1
     blt $t0, 3, printcut1
 	
-
     li $v0, 11
     li $a0, '|'
     syscall
@@ -511,6 +512,8 @@ printcut2:
 #we cut again from here
     la $t2, mergetemp1 # xxx | yyy
     la $t3, mergetemp2 # xxx | yyy
+    
+    # these isolate the corner elements, cut off entirely and leaves the other two of each half
     lw $s1, 0($t2) #split again
     lw $s2, 8($t3) #split rightmost
 
