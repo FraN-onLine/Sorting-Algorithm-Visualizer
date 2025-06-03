@@ -104,9 +104,20 @@ afterloop:
     la $a0, menu
     syscall
     
-    li $v0, 5
+    li $v0, 8 #read as string muna for validation
+    la $a0, inputbuffer
+    li $a1, 32
     syscall
-    move $s0, $v0  # Store choice in $s0
+
+    # Validate input: check if it's a valid integer string
+    la $a0, inputbuffer
+    jal isValidInt #use a function and pass along input string
+    beq $v0, $zero, invalid   # if not valid, prompt again
+
+    # Convert string to integer
+    la $a0, inputbuffer
+    jal str2int #jumps and links to the conversion function
+    move $s0, $v0 #store choice in $s0
     
     li $t0, 0 #counter
     la $t1, ints #integers
@@ -189,9 +200,9 @@ random_sort_start:
 
 radix_sort_start:
     # Initialize
-    la $t1, ints
-    li $s0, 1        # Current digit position (1, 10, 100)
-    li $s1, 0        # Max number of digits needed
+    la $t1, ints     # Load address of input array
+    li $s0, 1        # Initialize digit position to 1 (ones place)
+    li $s1, 0        # Will store number of digits in largest number
     
     # Find maximum number to determine number of digits
     li $t0, 0        # Counter
@@ -308,27 +319,32 @@ bubbleloopmain: #will print out all til we reach the index of comparison
 #====================================================================#
 #================Insertion Sort=======================================#
 insertionsort:
+    # This is our main insertion sort function
+    # We start from index 1 (second element) since a single element is already sorted
     beq $t0, 6, insertion_done  # If we've processed all elements, we're done
     
-    la $t1, ints               # Reset array pointer
-    move $t2, $t0              # Copy current position to $t2
-    mul $t3, $t2, 4           # Calculate offset for current element
+    la $t1, ints               # Reset array pointer. Get base address of array
+    move $t2, $t0              # Copy current position to $t2. Copy current position to compare
+    mul $t3, $t2, 4           # Calculate offset for current element (each int is 4 bytes)
     add $t1, $t1, $t3         # Point to current element
-    lw $t4, 0($t1)            # Load current element value (key)
+    lw $t4, 0($t1)            # Load current element value (key), value we're trying to insert
     
     # Print initial state before insertion
     la $t7, ints              # Start of array
     li $t8, 0                 # Counter for printing
     
 print_array_state:
+    # This procedure prints the current state of the array during insertion sort
+    # Shows the sorted portion, partition point, and unsorted portion
     beq $t8, 6, print_newline    # If printed all elements, print newline
     
-    lw $t3, 0($t7)           # Load current number
+    lw $t3, 0($t7)           # Load current number from array
     
-    # Check if we're at the partition point
+    # Check if we're at the partition point, if current pos is at the partition point between
+    # sorted and unsorted 
     beq $t8, $t0, print_partition
     
-    # Print regular number
+    # Print regular number (numbers in sorted portion)
     li $v0, 1
     move $a0, $t3
     syscall
@@ -340,22 +356,23 @@ print_array_state:
     j continue_printing
 
 print_partition:
+# This section prints the partition point with visual indicators
     # Print partition symbol
     li $v0, 11
-    li $a0, '|'
+    li $a0, '|'           # Print vertical bar to mark partition
     syscall
     
     li $v0, 4
     la $a0, space
     syscall
     
-    # Print key in brackets
+    # Print key value in brackets to highlight current element being inserted
     li $v0, 11
     li $a0, '['
     syscall
     
     li $v0, 1
-    move $a0, $t4    # Print the key
+    move $a0, $t4    # Print the key value here
     syscall
     
     li $v0, 11
@@ -367,11 +384,12 @@ print_partition:
     syscall
     
     # Continue printing remaining numbers
-    addi $t7, $t7, 4
-    addi $t8, $t8, 1
+    addi $t7, $t7, 4 # Move to next element
+    addi $t8, $t8, 1 # Increment counter
     j print_remaining
 
 print_remaining:
+# Prints the remaining unsorted portion after the partition
     beq $t8, 6, print_newline
     
     lw $t3, 0($t7)
@@ -389,6 +407,7 @@ print_remaining:
     j print_remaining
 
 continue_printing:
+    # Helper procedure to continue printing array elements
     addi $t7, $t7, 4         # Move to next element
     addi $t8, $t8, 1         # Increment counter
     j print_array_state
@@ -399,6 +418,7 @@ print_newline:
     syscall
 
 insertion_inner:
+# This is our inner loop that shifts elements to make room for insertion
     beq $t2, 0, insertion_inner_done  # If we're at start of array, inner loop done
     
     addi $t5, $t1, -4         # Point to previous element
@@ -1648,70 +1668,44 @@ rightsRight:
 heapsort:
  # First build max heap
     li $v0, 4
-    la $a0, heap_building
+    la $a0, heap_building # We organize the heap into a structure max heap
     syscall
     li $v0, 11
     li $a0, '\n'
     syscall
     
     # Start from last parent node ((n/2)-1 where n=6)
-    li $t0, 2        
+    li $t0, 2        # For 6 elements, last parent is at index 2
     li $s0, 6        # Store initial heap size
     
+    # Loop: Build the max heap by heapifying all parent nodes.
 build_heap:
-     # Process all nodes from last parent to root
+    # This is where we construct our max heap
+    # We start from last parent and work up to root
     move $a0, $t0    # Current parent index
-    move $a1, $s0    # Heap size
-    jal heapify      # Use heapify down for building
-    jal print_heap   
+    move $a1, $s0    # Current heap size
+    jal heapify      # Call heapify to maintain the max-heap property
+    jal print_heap   # Show current heap state
     
-    subi $t0, $t0, 1  # Move to next parent
-    bge $t0, 0, build_heap
+    subi $t0, $t0, 1  # Move to the previous parent node
+    bge $t0, 0, build_heap # Repeat for all parents (index >= 0)
     
-    # After build_heap, start extraction phase
-    move $t0, $s0    # Initialize counter with heap size
-    j extract_loop   # Start extracting max elements
+    # Extraction phase: repeatedly remove max and heapify the reduced heap
+    move $t0, $s0    # Reset $t0 to heap size (number of items left)
+    j extract_loop   # Begin extraction of max elements
     
-heapify_up_loop:
-    # Calculate parent index ((i-1)/2)
-    addi $t3, $t2, -1
-    srl $t3, $t3, 1     # Parent index
-    
-    # Get values
-    la $t1, ints
-    mul $t4, $t2, 4     # Current offset
-    add $t4, $t1, $t4
-    lw $t5, 0($t4)      # Current value
-    
-    mul $t6, $t3, 4     # Parent offset
-    add $t6, $t1, $t6
-    lw $t7, 0($t6)      # Parent value
-    
-    # Compare with parent
-    bge $t7, $t5, heapify_up_done  # Parent larger, we're done
-    
-    # Swap with parent
-    sw $t5, 0($t6)      # Move current up
-    sw $t7, 0($t4)      # Move parent down
-
-    move $t2, $t3       # Move to parent position
-    bgtz $t2, heapify_up_loop  # Continue if not at root
-    
-heapify_up_done:
-    lw $ra, 0($sp)
-    addi $sp, $sp, 4
-    jr $ra
-    
+    # Repeatedly extracts the max element, swaps it to end of the array,
+    # heapifies the reduced heap, and prints the steps
 extract_loop:
-    beqz $t0, heap_sort_done    # Changed from beqz $t0, 0
-    
+    beqz $t0, heap_sort_done     # If heap size is zero, sorting is done
+
     # Print extraction step
     li $v0, 4
     la $a0, heap_extract
     syscall
     
-    la $t1, ints
-    lw $t2, 0($t1)        # Load root
+    la $t1, ints           # Get base address of the array
+    lw $t2, 0($t1)        # $t2 = current root (max element)
     
     li $v0, 1
     move $a0, $t2
@@ -1726,24 +1720,26 @@ extract_loop:
     syscall
     
     # Swap root with last element
-    la $t1, ints
+    la $t1, ints          # Base address
     subi $t3, $t0, 1      # Fix: Use size-1 for last element index
-    mul $t3, $t3, 4       
-    add $t3, $t1, $t3     
-    lw $t4, 0($t3)        
-    
+    mul $t3, $t3, 4       # Offset = index * 4
+    add $t3, $t1, $t3     # Address of last element
+    lw $t4, 0($t3)        # $t4 = last element value
+
     sw $t4, 0($t1)        # Put last element at root
     sw $t2, 0($t3)        # Put old root at end
     
-    # Heapify with reduced size
+    # Heapify with reduced heap (root, size-1)
     subi $t0, $t0, 1      # Reduce heap size
     move $a1, $t0         # Pass new size to heapify
-    move $a0, $zero       # Start heapify from root
+    move $a0, $zero       # Start heapify from root (index 0)
     jal heapify
-    jal print_heap
+    jal print_heap        # Print current heap state after extraction
     
-    j extract_loop
+    j extract_loop        # Repeat until heap is empty
 
+# Prints the array as a linear sequence and visualizes the heap
+# structure in tree form.
 print_heap:
     # Save registers
     addi $sp, $sp, -12
@@ -1756,9 +1752,9 @@ print_heap:
     
     # Print heap array
 print_heap_loop:
-    beq $t0, 6, print_heap_structure
+    beq $t0, 6, print_heap_structure # If we reach 6 elements, print structure
     
-    lw $t2, 0($t1)   
+    lw $t2, 0($t1)  # Load current element
     
     li $v0, 1
     move $a0, $t2
@@ -1768,10 +1764,11 @@ print_heap_loop:
     la $a0, space
     syscall
     
-    addi $t1, $t1, 4
+    addi $t1, $t1, 4     # Move to next element
     addi $t0, $t0, 1
     j print_heap_loop
     
+# Visualize the current heap as a tree (level by level)
 print_heap_structure:
     # Print heap structure visualization
     li $v0, 11
@@ -1838,22 +1835,24 @@ print_heap_structure:
     addi $sp, $sp, 12
     jr $ra
 
+# Maintains the max-heap property for a subtree rooted at index $a0,
+# for a heap of size $a1. Recursively pushes down the value if needed.
 heapify:
-    # a0 = index to heapify from
+    # a0 = index to start heapifying from
     # a1 = heap size
     
     # Save return address
     addi $sp, $sp, -4
     sw $ra, 0($sp)
     
-    move $t2, $a0        # Index
-    move $s7, $a1        # Heap size
+    move $t2, $a0        # $t2 = current node index
+    move $s7, $a1        # $s7 = heap size
     
-    # Calculate child indices
-    mul $t5, $t2, 2      # Left child = 2i + 1
-    addi $t5, $t5, 1
+    # Calculate left and right child indices
+    mul $t5, $t2, 2      # $t5 = 2 * index
+    addi $t5, $t5, 1     # $t5 = left child index
     mul $t6, $t2, 2      # Right child = 2i + 2
-    addi $t6, $t6, 2
+    addi $t6, $t6, 2     # $t6 = right child index
     
     # Find largest
     move $t7, $t2        # Assume root is largest
@@ -1867,11 +1866,12 @@ heapify:
     bge $t5, $s7, check_right    # Skip if beyond heap size
     mul $t8, $t5, 4
     add $t8, $t1, $t8
-    lw $t9, 0($t8)                # Left child value
+    lw $t9, 0($t8)                # $t9 = left child value
     ble $t9, $t4, check_right     # Skip if left <= root
     move $t7, $t5                 # Left is largest
     move $t4, $t9                 # Update largest value
     
+    # Check if right child is bigger than current largest
 check_right:
     bge $t6, $s7, do_swap        # Skip if beyond heap size
     mul $t8, $t6, 4
@@ -1880,6 +1880,7 @@ check_right:
     ble $t9, $t4, do_swap        # Skip if right <= largest
     move $t7, $t6                # Right is largest
     
+    # Swap root with largest child if necessary and recurse
 do_swap:
     beq $t7, $t2, heapify_done   # If root is largest, done
     
@@ -1890,8 +1891,8 @@ do_swap:
     mul $t3, $t2, 4
     add $t3, $t1, $t3
     lw $t4, 0($t3)               # Load current
-    sw $t9, 0($t3)               # Swap values
-    sw $t4, 0($t8)
+    sw $t9, 0($t3)               # Swap values, Move largest child to root
+    sw $t4, 0($t8)               # Move root to child
     
     # Recursively heapify the affected subtree
     move $a0, $t7                # New root index
@@ -1909,44 +1910,36 @@ heap_sort_done:
 #================Random Sort=========================================#
 randomsort:
     # Save return address and used registers
-    addi $sp, $sp, -20
+    addi $sp, $sp, -20   # Create stack frame (5 registers × 4 bytes)
     sw $ra, 0($sp)
     sw $s0, 4($sp)
     sw $s1, 8($sp)
     sw $s2, 12($sp)
     sw $s3, 16($sp)      # Save shuffle counter
     
-    li $s3, 0            # Initialize step counter
+    li $s3, 0            # Initialize step counter to track number of steps
     li $t0, 0            # Initialize array index
     la $t1, ints         # Reset array pointer
-
-    # # First check if array is sorted
-    # jal check_if_sorted
-    # beq $v0, 1, random_sort_done   # If sorted, cleanup and exit
-    
-    # # If not sorted, shuffle array
-    # li $t0, 0        # Reset counter
-    # la $t1, ints     # Reset array pointer
     
 shuffle_loop:
     # Generate random index (0-5)
-    li $a1, 6        # Upper bound (exclusive)
-    li $v0, 42       # Random int syscall
+    li $a1, 6        # Upper bound (exclusive), Set upper bound to 6 (array size)
+    li $v0, 42       # System call for random int range
     syscall          # Result in $a0
     
     # Calculate addresses and swap
-    mul $t2, $t0, 4
-    add $t2, $t1, $t2
-    mul $t4, $a0, 4
-    add $t4, $t1, $t4
+    mul $t2, $t0, 4     # Current index × 4 (byte offset)
+    add $t2, $t1, $t2   # Address of current element
+    mul $t4, $a0, 4     # Random index × 4 (byte offset)
+    add $t4, $t1, $t4   # Address of random element
     
     # Load values
-    lw $t3, 0($t2)   # Load first number
-    lw $t5, 0($t4)   # Load second number
+    lw $t3, 0($t2)   # Load first number, current element
+    lw $t5, 0($t4)   # Load second number, random element
     
     # Swap numbers
-    sw $t5, 0($t2)
-    sw $t3, 0($t4)
+    sw $t5, 0($t2)   # Store random element in current position
+    sw $t3, 0($t4)   # Store current element in random position
     
     addi $s3, $s3, 1    # Increment step counter
 
@@ -1991,11 +1984,11 @@ random_sort_done:
 check_if_sorted:
     # Save return address
     addi $sp, $sp, -4
-    sw $ra, 0($sp)
+    sw $ra, 0($sp)   # Save return address
     
     la $t6, ints     # Load array base
     li $t7, 0        # Counter
-    li $v0, 1        # Assume sorted
+    li $v0, 1        # Assume sorted 1 = true
 
 check_loop:
     lw $t8, 0($t6)   # Current number
@@ -2004,8 +1997,8 @@ check_loop:
     bgt $t8, $t9, not_sorted  # If current > next, not sorted
     
     addi $t6, $t6, 4  # Move to next pair
-    addi $t7, $t7, 1
-    blt $t7, 5, check_loop
+    addi $t7, $t7, 1  
+    blt $t7, 5, check_loop # Continue until we check all pairs (5 pairs for 6 elements)
     
     # Restore and return
     lw $ra, 0($sp)
@@ -2031,12 +2024,12 @@ print_current_state:
     li $t7, 0
     
 print_loop:
-    beq $t7, 6, print_done
+    beq $t7, 6, print_done  # Exit if printed all elements
     
-    lw $t8, 0($t6)
+    lw $t8, 0($t6)          # Load current number
     
-    li $v0, 1
-    move $a0, $t8
+    li $v0, 1               # System call for print integer
+    move $a0, $t8           # System call for print integer
     syscall
     
     li $v0, 4
@@ -2061,40 +2054,45 @@ print_done:
     jr $ra
 
 #=================Radix Sort=========================================#
+# Find maximum number to determine number of required passes
 find_max:
     # Find maximum number to determine number of digits
     la $t1, ints
-    li $t2, 0    # Max number
+    li $t2, 0    # Max number 
     li $t0, 0    # Counter
 
+# Loop through array to find maximum value
 max_loop:
-    lw $t3, 0($t1)
-    bgt $t3, $t2, update_max
+    lw $t3, 0($t1) # Load current number
+    bgt $t3, $t2, update_max # If current > max, update max
     j continue_max
 
 update_max:
-    move $t2, $t3
+    move $t2, $t3 # Update max value
 
 continue_max:
-    addi $t1, $t1, 4
-    addi $t0, $t0, 1
-    blt $t0, 6, max_loop
+    addi $t1, $t1, 4 # Move to next array element
+    addi $t0, $t0, 1 # Increment counter
+    blt $t0, 6, max_loop # Continue if not done with array
 
     # Calculate number of digits in max number
-    move $t3, $t2
-    li $s1, 0    # Digit counter
+    move $t3, $t2 # Copy max number for digit counting
+    li $s1, 0     # Digit counter
+
+    # Loop to count digits by repeatedly dividing by 10
 count_digits:
-    beqz $t3, start_radix
-    div $t3, $t3, 10
-    addi $s1, $s1, 1
+    beqz $t3, start_radix # If number becomes 0, start sorting
+    div $t3, $t3, 10 # Divide by 10
+    addi $s1, $s1, 1 # Increment digit count
     j count_digits
 
 start_radix:
-    li $s0, 1    # Current digit position (1, 10, 100)
+    li $s0, 1    # Current digit position (1, 10, 100), Start with ones place (10^0)
 
+# Main radix sort loop - process each digit position
 radix_loop:
     # If we've completed s1 passes, we are done with Radix Sort
-    beqz $s1, done_radix
+    beqz $s1, done_radix # If no more digits to process, we're done
 
     # Print current digit position
     li $v0, 4
@@ -2114,47 +2112,38 @@ radix_loop:
     la $a0, bucket_msg
     syscall
 
-    # Clear count array (count[i]=0 for i=0..9)
-    la   $t9, count
-    li   $t8, 0
-    
-    # # Initialize buckets and count array with proper alignment
-    # la $t1, buckets          # Load base address of buckets
-    # li $t2, 0                # Initialize counter
-    # li $t3, 400             # Total bytes to clear
-    
-    # # # Ensure word alignment for bucket array
-    # # li $t4, 3                # Alignment mask
-    # # not $t4, $t4            # Invert mask
-    # # and $t1, $t1, $t4       # Align address to word boundary
+    # Clear count array (count[i]=0 for i=0..9), for next digit position
+    la   $t9, count # Array to count occurrences of each digit (0-9)
+    li   $t8, 0     # Counter for clearing arrays
 
 clear_count_loop:
     sw   $zero, 0($t9)    # count[i] = 0
-    addi $t9, $t9, 4
-    addi $t8, $t8, 1
+    addi $t9, $t9, 4      # Move to next count array element
+    addi $t8, $t8, 1      # Increment
     blt  $t8, 10, clear_count_loop
 
     # Clear buckets memory
-    la   $t9, buckets
-    li   $t8, 0
+    la   $t9, buckets # Array for sorting buckets
+    li   $t8, 0       # Counter for clearing buckets
 
 clear_buckets_loop:
-    sw   $zero, 0($t9)
-    addi $t9, $t9, 4
-    addi $t8, $t8, 1
+    sw   $zero, 0($t9)  # Clear bucket entry
+    addi $t9, $t9, 4    # Move to next bucket position
+    addi $t8, $t8, 1    # Increment counter
     blt  $t8, 60, clear_buckets_loop
 
     # Distribute elements into buckets
     la   $t1, ints
     li   $t0, 0          # loop counter for 6 elements
 
+# Distribute numbers into buckets based on current digit
 distribute_loop:
     lw   $t2, 0($t1)     # Load current element
     
     # Calculate digit = (element / s0) % 10
     div  $t5, $t2, $s0   # t5 = element / digitPos
-    mflo $t5
-    li   $t6, 10
+    mflo $t5             # quotient
+    li   $t6, 10         # divisor for mod operation
     div  $t5, $t5, $t6   # get remainder
     mfhi $t3             # bucketIndex in t3
 
@@ -2165,11 +2154,11 @@ distribute_loop:
     lw   $t9, 0($t7)     # count[bucketIndex]
 
     # Store element in correct bucket position
-    la   $t4, buckets
-    li   $s2, 24         # 24 bytes per bucket (6 items * 4 bytes)
-    mul  $t8, $t3, $s2   # offset for bucket
-    add  $t4, $t4, $t8
-    
+    la   $t4, buckets     # Base address of buckets
+    li   $s2, 24          # 24 bytes per bucket (6 items * 4 bytes)
+    mul  $t8, $t3, $s2    # offset for bucket
+    add  $t4, $t4, $t8    # and get to the right bucket
+
     # Offset inside bucket
     mul  $t8, $t9, 4     # 4 bytes per element
     add  $t4, $t4, $t8
@@ -2357,7 +2346,6 @@ pass_array_newline:
 
 done_radix:
     j exit
-    
 #--- Exit Area for All Sorts---
 #Final Printing
 exit:
