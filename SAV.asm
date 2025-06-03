@@ -104,9 +104,20 @@ afterloop:
     la $a0, menu
     syscall
     
-    li $v0, 5
+    li $v0, 8 #read as string muna for validation
+    la $a0, inputbuffer
+    li $a1, 32
     syscall
-    move $s0, $v0  # Store choice in $s0
+
+    # Validate input: check if it's a valid integer string
+    la $a0, inputbuffer
+    jal isValidInt #use a function and pass along input string
+    beq $v0, $zero, invalid   # if not valid, prompt again
+
+    # Convert string to integer
+    la $a0, inputbuffer
+    jal str2int #jumps and links to the conversion function
+    move $s0, $v0 #store choice in $s0
     
     li $t0, 0 #counter
     la $t1, ints #integers
