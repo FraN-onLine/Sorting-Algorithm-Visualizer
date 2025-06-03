@@ -49,6 +49,8 @@ after_pass: .asciiz "\nAfter this pass: "
 buckets: .space 400  # Space for 10 buckets (10 * 10 words)
 count: .space 40     # Count array (10 words)
 nonePicked: .asciiz "No Sorting Algorithm Picked, Terminating Program....."
+invalidmsg: .asciiz "Invalid input! Please enter an integer number only.\n\n"
+inputbuffer: .space 32
 
 .text
 .globl main
@@ -63,19 +65,39 @@ main:
     syscall
 
 loop:
-
     li $v0, 4
     la $a0, prompt
     syscall
-    
-    li $v0, 5
+
+    li $v0, 8 #read as string muna for validation
+    la $a0, inputbuffer
+    li $a1, 32
     syscall
-    move $t2, $v0  # Store input in $t2
-    
+
+    # Validate input: check if it's a valid integer string
+    la $a0, inputbuffer
+    jal isValidInt #use a function and pass along input string
+    beq $v0, $zero, invalid   # if not valid, prompt again
+
+    # Convert string to integer
+    la $a0, inputbuffer
+    jal str2int #jumps and links to the conversion function
+    move $t2, $v0 #$v0 now has the integer
+
     sw	$t2, 0($t1) #store
     addi $t0, $t0, 1 #i++
     add $t1, $t1, 4 #shift 4 for each int
     blt $t0, 6, loop
+
+    j afterloop
+
+invalid:
+    li $v0, 4
+    la $a0, invalidmsg
+    syscall
+    j loop
+
+afterloop:
     
     #Print menu for algorithm selection
     li $v0, 4
@@ -95,7 +117,7 @@ loop:
     
 printarray:
 
-    lbu	$t2, 0($t1) #load
+    lw	$t2, 0($t1) #load
     addi $t0, $t0, 1 #i++
     add $t1, $t1, 4 #shift 4 for each int
     
@@ -2427,6 +2449,94 @@ checksorted:
     		j exit
     	outoforder2:
     		jr $ra
+    		
+# isValidInt: Checks if string in $a0 is a valid integer
+# it returns eturns $v0 = 1 if valid, 0 if not
+
+isValidInt:
+    # $a0 = address of string
+    # $v0 = 1 if valid, 0 if not
+    addi $sp, $sp, -8
+    sw $t0, 0($sp)
+    sw $t1, 4($sp)
+
+    move $t0, $a0
+    lb $t1, 0($t0) #get first elem
+    beq $t1, 0x0A, invalidint   # empty input (newline)
+    beq $t1, 0, invalidint      # empty input (null)
+
+    # Optional leading minus
+    li $v0, 1
+    li $t2, 45                  # '-'
+    beq $t1, $t2, skip_first
+    j check_digits
+
+skip_first:
+    addi $t0, $t0, 1
+    lb $t1, 0($t0)
+    beq $t1, 0x0A, invalidint  # only '-' is invalid
+    beq $t1, 0, invalidint
+
+check_digits:
+    # Loop through each character
+check_digit_loop:
+    lb $t1, 0($t0)
+    beq $t1, 0x0A, validint    # newline: end of input
+    beq $t1, 0, validint       # null: end of input
+    blt $t1, 48, invalidint    # not '0'-'9'
+    bgt $t1, 57, invalidint
+    addi $t0, $t0, 1
+    j check_digit_loop
+
+validint:
+    li $v0, 1
+    j is_valid_int_end
+
+invalidint:
+    li $v0, 0
+
+is_valid_int_end:
+    lw $t0, 0($sp)
+    lw $t1, 4($sp)
+    addi $sp, $sp, 8
+    jr $ra
+
+# str2int: Converts string in $a0 to integer, returns in $v0
+# Handles optional leading minus
+str2int:
+    addi $sp, $sp, -12
+    sw $t0, 0($sp)
+    sw $t1, 4($sp)
+    sw $t2, 8($sp)
+
+    move $t0, $a0
+    li $v0, 0
+    li $t2, 1                  # sign = 1
+
+    lb $t1, 0($t0)
+    li $t3, 45                 # '-'
+    bne $t1, $t3, str2int_loop
+    li $t2, -1                 # sign = -1
+    addi $t0, $t0, 1
+
+str2int_loop:
+    lb $t1, 0($t0)
+    beq $t1, 0x0A, str2int_done
+    beq $t1, 0, str2int_done
+    sub $t1, $t1, 48           # char to int
+    mul $v0, $v0, 10
+    add $v0, $v0, $t1
+    addi $t0, $t0, 1
+    j str2int_loop
+
+str2int_done:
+    mul $v0, $v0, $t2          # apply sign
+
+    lw $t0, 0($sp)
+    lw $t1, 4($sp)
+    lw $t2, 8($sp)
+    addi $sp, $sp, 12
+    jr $ra
     
 endprogram:
     li $v0, 10
