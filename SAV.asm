@@ -52,6 +52,14 @@ nonePicked: .asciiz "No Sorting Algorithm Picked, Terminating Program....."
 invalidmsg: .asciiz "Invalid input! Please enter an integer number only.\n\n"
 inputbuffer: .space 32
 
+# Functions
+# Bubble Sort - Sinking Sort that continuously swaps adjacent digits
+# Insertion Sort - Sorting algorithm that sorts inplace after each insert - Scales on n
+# Merge Sort - Divide and Conquer Algorithm that Sorts smaller groups before merging
+# Quick Sort - Division-Partition Sort that makes use of Pivot based comparison
+# Heap Sort - Tree reliant sort that makes use of Max Heap Algorithm
+# Radix Sort - Non-comparitive sort that compares LSB
+
 .text
 .globl main
 
@@ -151,8 +159,8 @@ islastdigit:
     blt $t0, 6, printarray
     
     li $v0, 11
-    	li $a0, '\n'
-   	 syscall
+    li $a0, '\n'
+    syscall
 
  # Branch to appropriate sorting algorithm based on choice
     beq $s0, 1, bubble_sort_start  # If choice == 1, go to bubble sort
@@ -167,7 +175,9 @@ islastdigit:
     la $a0, nonePicked
     syscall
     
-    j exit
+    li $v0, 10
+    syscall
+    
 
 bubble_sort_start:
     li $t0, 0 #counter
@@ -200,9 +210,9 @@ random_sort_start:
 
 radix_sort_start:
     # Initialize
-    la $t1, ints     # Load address of input array
-    li $s0, 1        # Initialize digit position to 1 (ones place)
-    li $s1, 0        # Will store number of digits in largest number
+    la $t1, ints
+    li $s0, 1        # Current digit position (1, 10, 100)
+    li $s1, 0        # Max number of digits needed
     
     # Find maximum number to determine number of digits
     li $t0, 0        # Counter
@@ -2346,6 +2356,7 @@ pass_array_newline:
 
 done_radix:
     j exit
+    
 #--- Exit Area for All Sorts---
 #Final Printing
 exit:
