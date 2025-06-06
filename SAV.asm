@@ -10,7 +10,7 @@ originalarray: .asciiz "Original Array is: "
 res: .asciiz "Sorted: "
 com_space: .asciiz ", "
 space: .asciiz " "
-menu: .asciiz "\nChoose Sorting Algorithm:\n1. Bubble Sort\n2. Insertion Sort \n3. Merge Sort\n4. Quicksort\n5. Heap Sort\n6. Random Sort \n7. Radix Sort\nEnter Choice: "
+menu: .asciiz "\nChoose Sorting Algorithm:\n1. Bubble Sort\n2. Insertion Sort \n3. Merge Sort\n4. Quicksort\n5. Heap Sort\n6. Random Sort \n7. Radix Sort (Numbers as treated as absolute |n|)\nEnter Choice: "
 divide: .asciiz "divide: "
 sort: .asciiz "sort: "
 merge: .asciiz "merge: "
@@ -1920,7 +1920,7 @@ heap_sort_done:
 #================Random Sort=========================================#
 randomsort:
     # Save return address and used registers
-    addi $sp, $sp, -20   # Create stack frame (5 registers Ã— 4 bytes)
+    addi $sp, $sp, -20   # Create stack frame (5 registers × 4 bytes)
     sw $ra, 0($sp)
     sw $s0, 4($sp)
     sw $s1, 8($sp)
@@ -1938,9 +1938,9 @@ shuffle_loop:
     syscall          # Result in $a0
     
     # Calculate addresses and swap
-    mul $t2, $t0, 4     # Current index Ã— 4 (byte offset)
+    mul $t2, $t0, 4     # Current index × 4 (byte offset)
     add $t2, $t1, $t2   # Address of current element
-    mul $t4, $a0, 4     # Random index Ã— 4 (byte offset)
+    mul $t4, $a0, 4     # Random index × 4 (byte offset)
     add $t4, $t1, $t4   # Address of random element
     
     # Load values
@@ -2150,6 +2150,16 @@ clear_buckets_loop:
 distribute_loop:
     lw   $t2, 0($t1)     # Load current element
     
+    # Convert negative numbers to positive
+    bltz $t2, convert_to_positive
+    j skip_convert
+    
+convert_to_positive:
+    sub $t2, $zero, $t2
+    sw   $t2, 0($t1)
+    j skip_convert
+
+skip_convert:
     # Calculate digit = (element / s0) % 10
     div  $t5, $t2, $s0   # t5 = element / digitPos
     mflo $t5             # quotient
